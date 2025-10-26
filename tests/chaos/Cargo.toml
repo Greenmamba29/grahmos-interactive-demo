@@ -1,0 +1,50 @@
+[package]
+name = "prism-chaos-tests"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+# Core PRISM crates
+prism-crdt = { path = "../../src/storage/crdt" }
+prism-consensus = { path = "../../src/consensus" }
+prism-cas = { path = "../../src/storage/cas" }
+prism-p2p = { path = "../../src/network/p2p" }
+prism-swarm = { path = "../../src/core/swarm" }
+
+# Async runtime and testing
+tokio = { workspace = true, features = ["test-util", "macros", "time", "rt-multi-thread", "signal"] }
+tokio-test.workspace = true
+futures.workspace = true
+
+# Chaos engineering utilities
+chaos-mesh-client = "0.3"
+rand = "0.8"
+tempfile.workspace = true
+
+# Network simulation
+libp2p.workspace = true
+multiaddr.workspace = true
+
+# System resource management
+sysinfo = "0.29"
+libc = "0.2"
+
+# Logging and metrics
+tracing.workspace = true
+tracing-subscriber.workspace = true
+prometheus.workspace = true
+
+# Serialization and data
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono = { version = "0.4", features = ["serde"] }
+
+# Additional testing utilities  
+criterion.workspace = true
+pretty_assertions = "1.4"
+serial_test = "3.0"
+
+# Process control for chaos injection
+nix = "0.27"

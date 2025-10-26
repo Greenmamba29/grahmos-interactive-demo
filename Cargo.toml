@@ -1,0 +1,113 @@
+[workspace]
+members = [
+    "src/core/swarm",
+    "src/core/crdt", 
+    "src/core/consensus",
+    "src/storage/cas",
+    "src/storage/event_log",
+    "src/network/p2p",
+    "src/network/discovery",
+    "src/platform/grahmos",
+    "src/api/rest",
+    "src/bin/prism-agent",
+    "src/bin/prism-cli",
+    "tests/unit",
+    "tests/integration",
+    "tests/chaos",
+    "benchmarks"
+]
+
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+authors = ["PRISM Agent Team <agents@prism-project.org>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/prism-project/prism"
+homepage = "https://prism-project.org"
+description = "PRISM - Persistent Replication through Intelligent Swarm Mechanisms"
+keywords = ["disaster-recovery", "replication", "p2p", "offline-first", "consensus"]
+categories = ["network-programming", "database", "distributed-systems"]
+
+[workspace.dependencies]
+# Core async runtime and utilities
+tokio = { version = "1.0", features = ["full"] }
+tokio-util = "0.7"
+futures = "0.3"
+async-trait = "0.1"
+
+# P2P networking and discovery
+libp2p = { version = "0.53", features = ["tcp", "udp", "mdns", "noise", "yamux", "gossipsub", "kad", "identify", "ping"] }
+multiaddr = "0.18"
+
+# Serialization and data structures
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rmp-serde = "1.1"  # MessagePack for low-latency serialization
+bincode = "1.3"
+
+# CRDT and consensus
+vector-clock = "0.1"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Storage and hashing
+rocksdb = "0.21"
+blake3 = { version = "1.5", features = ["rayon"] }
+merkletree = "0.23"
+
+# Compression and encryption
+zstd = "0.13"
+ring = "0.17"
+aes-gcm = "0.10"
+
+# Error handling and logging
+thiserror = "1.0"
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Configuration and CLI
+clap = { version = "4.0", features = ["derive", "env"] }
+toml = "0.8"
+serde_yaml = "0.9"
+
+# HTTP API and WebSocket
+warp = "0.3"
+tokio-tungstenite = "0.20"
+
+# Metrics and observability
+prometheus = "0.13"
+metrics = "0.21"
+
+# Testing utilities (dev-dependencies)
+criterion = "0.5"
+tokio-test = "0.4"
+tempfile = "3.0"
+mockall = "0.11"
+
+[profile.dev]
+opt-level = 0
+debug = true
+overflow-checks = true
+
+[profile.release]
+opt-level = 3
+debug = false
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.bench]
+opt-level = 3
+debug = false
+lto = true
+codegen-units = 1
+
+# PRISM-specific configuration
+[workspace.metadata.prism]
+min_rust_version = "1.75.0"
+offline_first = true
+target_rto_ms = 1000
+target_rpo_ms = 0
+consensus_algorithm = "pbft"

@@ -1,0 +1,72 @@
+{
+  "network_profiles": {
+    "wifi": {
+      "bandwidth_mbps": 100,
+      "latency_ms": 5,
+      "packet_loss_percent": 0.1,
+      "jitter_ms": 2,
+      "description": "High-speed WiFi connection"
+    },
+    "4g": {
+      "bandwidth_mbps": 25,
+      "latency_ms": 50,
+      "packet_loss_percent": 1.0,
+      "jitter_ms": 10,
+      "description": "4G/LTE mobile connection"
+    },
+    "3g": {
+      "bandwidth_mbps": 8,
+      "latency_ms": 150,
+      "packet_loss_percent": 2.5,
+      "jitter_ms": 25,
+      "description": "3G mobile connection"
+    },
+    "edge": {
+      "bandwidth_mbps": 0.5,
+      "latency_ms": 500,
+      "packet_loss_percent": 5.0,
+      "jitter_ms": 100,
+      "description": "EDGE/2G slow mobile connection"
+    },
+    "offline": {
+      "bandwidth_mbps": 0,
+      "latency_ms": 0,
+      "packet_loss_percent": 100,
+      "jitter_ms": 0,
+      "description": "Offline mode - no connectivity"
+    }
+  },
+  "transition_scenarios": [
+    {
+      "name": "commute_scenario",
+      "description": "Simulates network transitions during commute",
+      "steps": [
+        {"profile": "wifi", "duration_seconds": 30},
+        {"profile": "4g", "duration_seconds": 120},
+        {"profile": "3g", "duration_seconds": 60},
+        {"profile": "offline", "duration_seconds": 15},
+        {"profile": "wifi", "duration_seconds": 45}
+      ]
+    },
+    {
+      "name": "battery_saver_scenario", 
+      "description": "Simulates reduced connectivity in battery saver mode",
+      "steps": [
+        {"profile": "4g", "duration_seconds": 60},
+        {"profile": "3g", "duration_seconds": 90},
+        {"profile": "edge", "duration_seconds": 120},
+        {"profile": "offline", "duration_seconds": 30}
+      ]
+    },
+    {
+      "name": "mesh_recovery_scenario",
+      "description": "Tests P2P mesh recovery after network failure", 
+      "steps": [
+        {"profile": "wifi", "duration_seconds": 30},
+        {"profile": "offline", "duration_seconds": 45},
+        {"profile": "4g", "duration_seconds": 60},
+        {"profile": "wifi", "duration_seconds": 30}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+[package]
+name = "prism-p2p"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "PRISM P2P Networking - libp2p mesh coordination and encrypted communication"
+
+[dependencies]
+# Workspace dependencies
+tokio = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+
+# P2P networking
+libp2p = { workspace = true }
+multiaddr = { workspace = true }
+
+# Serialization for network messages
+rmp-serde = { workspace = true }  # MessagePack for low-latency
+bincode = { workspace = true }
+
+# Cryptography for secure communication
+ring = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+tempfile = { workspace = true }

@@ -1,0 +1,541 @@
+name: PRISM Phase 2 Testing Integration
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Daily mobile P2P testing at 02:00 UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - api_contract
+          - mobile_p2p
+          - compliance
+          - performance_sla
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  # Performance SLA thresholds
+  MAX_STORAGE_LATENCY_MS: 50
+  MIN_STORAGE_THROUGHPUT_MBS: 100
+  MAX_API_RESPONSE_MS: 200
+  MAX_CONSENSUS_LATENCY_MS: 200
+  MAX_MEMORY_MB_PER_AGENT: 512
+
+jobs:
+  # Phase 2 Quality Gate 1: API Contract Testing
+  api-contract-tests:
+    name: API Contract Testing
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'api_contract' || github.event.inputs.test_suite == '' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Cache cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-api-contract-${{ hashFiles('**/Cargo.lock') }}
+          
+      - name: Validate OpenAPI specification
+        run: |
+          npm install -g @apidevtools/swagger-parser
+          swagger-parser validate tests/api/openapi.yaml
+          
+      - name: Run API contract tests
+        run: |
+          cd tests/api
+          cargo test --release contract_tests --verbose
+          
+      - name: Validate REST API endpoints
+        run: |
+          cd tests/api  
+          cargo test --release test_all_rest_endpoints --verbose
+          
+      - name: Test WebSocket event streams
+        run: |
+          cd tests/api
+          cargo test --release test_websocket_events --verbose
+          
+      - name: Validate API error handling
+        run: |
+          cd tests/api
+          cargo test --release test_error_responses --verbose
+          
+      - name: Performance load testing
+        run: |
+          cd tests/api
+          cargo test --release test_performance_load --verbose
+          
+      - name: Generate API test report
+        run: |
+          cd tests/api
+          cargo test --release -- --format json | tee api_test_results.json
+          
+      - name: Upload API test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: api-test-results
+          path: tests/api/api_test_results.json
+
+  # Phase 2 Quality Gate 2: SDK Integration Testing  
+  sdk-integration-tests:
+    name: SDK Integration Testing
+    runs-on: ubuntu-latest
+    needs: api-contract-tests
+    if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'api_contract' || github.event.inputs.test_suite == '' }}
+    strategy:
+      matrix:
+        language: [rust, javascript, python]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Setup Node.js
+        if: matrix.language == 'javascript'
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Setup Python
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Run SDK integration tests
+        run: |
+          cd tests/api
+          cargo test --release sdk_integration_tests --verbose
+          
+      - name: Test cross-language compatibility
+        run: |
+          cd tests/api
+          cargo test --release test_cross_language_compatibility --verbose
+          
+      - name: Validate retry logic consistency
+        run: |
+          cd tests/api  
+          cargo test --release test_retry_logic --verbose
+
+  # Phase 2 Quality Gate 3: Mobile P2P Testing
+  mobile-p2p-tests:
+    name: Mobile P2P Network Testing
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'mobile_p2p' || github.event.inputs.test_suite == '' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Install mobile testing dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y android-tools-adb
+          
+      - name: Cache cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-mobile-${{ hashFiles('**/Cargo.lock') }}
+          
+      - name: Run network switching simulation
+        run: |
+          cd tests/mobile
+          cargo test --release test_network_switching_scenarios --verbose
+          
+      - name: Test iOS network constraints
+        run: |
+          cd tests/mobile
+          cargo test --release test_ios_network_constraints --verbose
+          
+      - name: Test Android network constraints  
+        run: |
+          cd tests/mobile
+          cargo test --release test_android_network_constraints --verbose
+          
+      - name: Validate P2P mesh recovery
+        run: |
+          cd tests/mobile
+          cargo test --release test_p2p_mesh_recovery --verbose
+          
+      - name: Battery usage validation
+        run: |
+          cd tests/mobile
+          cargo test --release test_battery_constraints --verbose
+          
+      - name: Offline queue synchronization
+        run: |
+          cd tests/mobile
+          cargo test --release test_offline_sync --verbose
+          
+      - name: Background processing limits
+        run: |
+          cd tests/mobile
+          cargo test --release test_background_processing --verbose
+          
+      - name: Generate mobile test report
+        run: |
+          cd tests/mobile
+          cargo test --release -- --format json | tee mobile_test_results.json
+          
+      - name: Upload mobile test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: mobile-test-results
+          path: tests/mobile/mobile_test_results.json
+
+  # Phase 2 Quality Gate 4: Compliance & Security Testing
+  compliance-security-tests:
+    name: RBAC & Compliance Testing
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'compliance' || github.event.inputs.test_suite == '' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Cache cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-compliance-${{ hashFiles('**/Cargo.lock') }}
+          
+      - name: Run RBAC permission matrix tests
+        run: |
+          cd tests/compliance
+          cargo test --release test_rbac_permission_matrix --verbose
+          
+      - name: Test cross-tenant isolation
+        run: |
+          cd tests/compliance
+          cargo test --release test_cross_tenant_isolation --verbose
+          
+      - name: Validate SOC 2 compliance scenarios
+        run: |
+          cd tests/compliance
+          cargo test --release test_soc2_compliance --verbose
+          
+      - name: Test ISO 27001 requirements
+        run: |
+          cd tests/compliance
+          cargo test --release test_iso27001_requirements --verbose
+          
+      - name: GDPR data privacy validation
+        run: |
+          cd tests/compliance
+          cargo test --release test_gdpr_compliance --verbose
+          
+      - name: Audit log integrity tests
+        run: |
+          cd tests/compliance
+          cargo test --release test_audit_log_integrity --verbose
+          
+      - name: Encryption validation (AES-256-GCM)
+        run: |
+          cd tests/compliance
+          cargo test --release test_encryption_compliance --verbose
+          
+      - name: Generate compliance report
+        run: |
+          cd tests/compliance
+          cargo test --release -- --format json | tee compliance_test_results.json
+          
+      - name: Upload compliance test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: compliance-test-results
+          path: tests/compliance/compliance_test_results.json
+
+  # Phase 2 Quality Gate 5: Performance SLA Validation
+  performance-sla-tests:
+    name: Performance SLA Validation
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'performance_sla' || github.event.inputs.test_suite == '' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Cache cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-performance-sla-${{ hashFiles('**/Cargo.lock') }}
+          
+      - name: Storage I/O performance validation
+        run: |
+          cd tests/performance
+          cargo test --release test_storage_io_performance --verbose
+          
+      - name: Network latency SLA validation
+        run: |
+          cd tests/performance
+          cargo test --release test_network_latency_sla --verbose
+          
+      - name: Consensus latency validation
+        run: |
+          cd tests/performance
+          cargo test --release test_consensus_latency_sla --verbose
+          
+      - name: API response time validation
+        run: |
+          cd tests/performance
+          cargo test --release test_api_response_time_sla --verbose
+          
+      - name: Memory usage validation
+        run: |
+          cd tests/performance
+          cargo test --release test_memory_usage_sla --verbose
+          
+      - name: Data efficiency validation
+        run: |
+          cd tests/performance
+          cargo test --release test_data_efficiency_sla --verbose
+          
+      - name: Generate performance SLA report
+        run: |
+          cd tests/performance
+          cargo test --release -- --format json | tee performance_sla_results.json
+          
+      - name: Validate SLA compliance
+        run: |
+          cd tests/performance
+          python3 ../scripts/validate_sla_compliance.py performance_sla_results.json \
+            --max-storage-latency $MAX_STORAGE_LATENCY_MS \
+            --min-storage-throughput $MIN_STORAGE_THROUGHPUT_MBS \
+            --max-api-response $MAX_API_RESPONSE_MS \
+            --max-consensus-latency $MAX_CONSENSUS_LATENCY_MS \
+            --max-memory $MAX_MEMORY_MB_PER_AGENT
+            
+      - name: Upload performance test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-sla-results
+          path: tests/performance/performance_sla_results.json
+
+  # Phase 2 Quality Gate 6: Real-time Dashboard Integration
+  dashboard-integration:
+    name: Real-time Dashboard Integration
+    runs-on: ubuntu-latest
+    needs: [api-contract-tests, mobile-p2p-tests, compliance-security-tests, performance-sla-tests]
+    if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == '' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Cache cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-dashboard-${{ hashFiles('**/Cargo.lock') }}
+          
+      - name: Run dashboard integration tests
+        run: |
+          cd tests/reporting
+          cargo test --release dashboard_integration --verbose
+          
+      - name: Test real-time metrics collection
+        run: |
+          cd tests/reporting
+          cargo test --release test_real_time_metrics --verbose
+          
+      - name: Validate failure trend analysis
+        run: |
+          cd tests/reporting
+          cargo test --release test_failure_trend_analysis --verbose
+          
+      - name: Test alerting system integration
+        run: |
+          cd tests/reporting
+          cargo test --release test_alerting_integration --verbose
+          
+      - name: Generate dashboard report
+        run: |
+          cd tests/reporting
+          cargo test --release -- --format json | tee dashboard_results.json
+          
+      - name: Upload dashboard test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: dashboard-test-results
+          path: tests/reporting/dashboard_results.json
+
+  # Phase 2 Final Quality Gate: Integration Summary
+  phase2-quality-gate-summary:
+    name: Phase 2 Quality Gate Summary
+    runs-on: ubuntu-latest
+    needs: [api-contract-tests, sdk-integration-tests, mobile-p2p-tests, compliance-security-tests, performance-sla-tests, dashboard-integration]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download all test results
+        uses: actions/download-artifact@v3
+        with:
+          path: test-results/
+          
+      - name: Generate comprehensive test report
+        run: |
+          echo "# PRISM Phase 2 Quality Gate Summary" > phase2_summary.md
+          echo "**Timestamp**: $(date -u)" >> phase2_summary.md
+          echo "**Commit**: ${{ github.sha }}" >> phase2_summary.md
+          echo "**Branch**: ${{ github.ref_name }}" >> phase2_summary.md
+          echo "" >> phase2_summary.md
+          
+          echo "## Test Results Overview" >> phase2_summary.md
+          if [ "${{ needs.api-contract-tests.result }}" == "success" ]; then
+            echo "✅ API Contract Tests: PASSED" >> phase2_summary.md
+          else
+            echo "❌ API Contract Tests: FAILED" >> phase2_summary.md
+          fi
+          
+          if [ "${{ needs.sdk-integration-tests.result }}" == "success" ]; then
+            echo "✅ SDK Integration Tests: PASSED" >> phase2_summary.md
+          else
+            echo "❌ SDK Integration Tests: FAILED" >> phase2_summary.md
+          fi
+          
+          if [ "${{ needs.mobile-p2p-tests.result }}" == "success" ]; then
+            echo "✅ Mobile P2P Tests: PASSED" >> phase2_summary.md
+          else
+            echo "❌ Mobile P2P Tests: FAILED" >> phase2_summary.md
+          fi
+          
+          if [ "${{ needs.compliance-security-tests.result }}" == "success" ]; then
+            echo "✅ Compliance & Security Tests: PASSED" >> phase2_summary.md
+          else
+            echo "❌ Compliance & Security Tests: FAILED" >> phase2_summary.md
+          fi
+          
+          if [ "${{ needs.performance-sla-tests.result }}" == "success" ]; then
+            echo "✅ Performance SLA Tests: PASSED" >> phase2_summary.md
+          else
+            echo "❌ Performance SLA Tests: FAILED" >> phase2_summary.md
+          fi
+          
+          if [ "${{ needs.dashboard-integration.result }}" == "success" ]; then
+            echo "✅ Dashboard Integration: PASSED" >> phase2_summary.md
+          else
+            echo "❌ Dashboard Integration: FAILED" >> phase2_summary.md
+          fi
+          
+          echo "" >> phase2_summary.md
+          echo "## Next Steps" >> phase2_summary.md
+          if [[ "${{ needs.api-contract-tests.result }}" == "success" && 
+                "${{ needs.mobile-p2p-tests.result }}" == "success" && 
+                "${{ needs.compliance-security-tests.result }}" == "success" && 
+                "${{ needs.performance-sla-tests.result }}" == "success" ]]; then
+            echo "🎉 **All Phase 2 quality gates passed! Ready for Sprint 1 deployment.**" >> phase2_summary.md
+          else
+            echo "⚠️  **Some quality gates failed. Review failed tests before proceeding.**" >> phase2_summary.md
+          fi
+          
+          cat phase2_summary.md
+          
+      - name: Upload Phase 2 summary report
+        uses: actions/upload-artifact@v3
+        with:
+          name: phase2-quality-gate-summary
+          path: phase2_summary.md
+          
+      - name: Comment PR with summary
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('phase2_summary.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+
+  # Failure Notification for Phase 2
+  phase2-failure-notification:
+    name: Phase 2 Failure Notification
+    runs-on: ubuntu-latest
+    needs: [api-contract-tests, mobile-p2p-tests, compliance-security-tests, performance-sla-tests, dashboard-integration]
+    if: failure()
+    steps:
+      - name: Create failure report
+        run: |
+          echo "🚨 **PRISM Phase 2 Quality Gates Failed**" > failure_report.md
+          echo "" >> failure_report.md
+          echo "**Commit**: ${{ github.sha }}" >> failure_report.md
+          echo "**Branch**: ${{ github.ref_name }}" >> failure_report.md
+          echo "**Timestamp**: $(date -u)" >> failure_report.md
+          echo "" >> failure_report.md
+          echo "**Failed Jobs**:" >> failure_report.md
+          
+          if [ "${{ needs.api-contract-tests.result }}" == "failure" ]; then
+            echo "- ❌ API Contract Tests" >> failure_report.md
+          fi
+          if [ "${{ needs.mobile-p2p-tests.result }}" == "failure" ]; then
+            echo "- ❌ Mobile P2P Tests" >> failure_report.md
+          fi
+          if [ "${{ needs.compliance-security-tests.result }}" == "failure" ]; then
+            echo "- ❌ Compliance & Security Tests" >> failure_report.md
+          fi
+          if [ "${{ needs.performance-sla-tests.result }}" == "failure" ]; then
+            echo "- ❌ Performance SLA Tests" >> failure_report.md
+          fi
+          if [ "${{ needs.dashboard-integration.result }}" == "failure" ]; then
+            echo "- ❌ Dashboard Integration" >> failure_report.md
+          fi
+          
+          echo "" >> failure_report.md
+          echo "**Action Required**: Review failed tests and fix issues before proceeding with Sprint 1." >> failure_report.md
+          
+          cat failure_report.md
+          
+      - name: Send failure notification
+        run: |
+          echo "Phase 2 quality gates failed. Manual intervention required."
+          # Add Slack/Discord webhook integration here
+          # curl -X POST $WEBHOOK_URL -d "$(cat failure_report.md)"

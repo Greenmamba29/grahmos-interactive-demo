@@ -1,0 +1,24 @@
+# PRISM Automated Monitoring Schedule
+# 4-hour quality checks as specified in coordination protocol
+
+# API Contract validation (every 4 hours)
+0 2,6,10,14,18,22 * * * /Users/paco/prism/monitoring/cron/api_contract_check.sh
+
+# Mobile P2P health check (every 4 hours, offset by 1 hour)
+0 3,7,11,15,19,23 * * * /Users/paco/prism/monitoring/cron/mobile_p2p_check.sh
+
+# Performance SLA monitoring (every 4 hours, offset by 2 hours)  
+0 4,8,12,16,20,0 * * * /Users/paco/prism/monitoring/cron/performance_sla_check.sh
+
+# Compliance audit (every 4 hours, offset by 3 hours)
+0 5,9,13,17,21,1 * * * /Users/paco/prism/monitoring/cron/compliance_audit_check.sh
+
+# Dashboard data generation (every 30 minutes)
+*/30 * * * * /Users/paco/prism/monitoring/generate_dashboard_data.sh
+
+# Log cleanup (daily at 01:00 UTC)
+0 1 * * * find /Users/paco/prism/monitoring/logs -name "*.log" -mtime +7 -delete
+0 1 * * * find /Users/paco/prism/monitoring/tmp -name "*.json" -mtime +3 -delete
+
+# Weekly summary report (Sundays at 23:00 UTC)
+0 23 * * 0 /Users/paco/prism/monitoring/generate_weekly_summary.sh

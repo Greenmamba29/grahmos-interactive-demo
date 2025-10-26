@@ -1,0 +1,1366 @@
+openapi: 3.0.3
+info:
+  title: PRISM REST API
+  description: |
+    REST API for PRISM (Persistent Replication through Intelligent Swarm Mechanisms)
+    providing agent management, swarm coordination, storage management, and network monitoring.
+  version: 0.1.0
+  contact:
+    name: PRISM Agent Team
+    email: agents@prism-project.org
+  license:
+    name: MIT OR Apache-2.0
+    url: https://github.com/prism-project/prism
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.prism-mesh.local/api/v1
+    description: Local mesh network
+
+paths:
+  # Agent Management API
+  /agents:
+    post:
+      summary: Create new agent
+      description: Creates and registers a new agent in the swarm
+      operationId: createAgent
+      tags:
+        - Agent Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentConfig'
+            example:
+              agent_type: "developer"
+              capabilities: ["code_review", "testing", "documentation"]
+              resource_limits:
+                max_memory_mb: 512
+                max_cpu_percent: 25
+              config:
+                language_models: ["rust", "typescript"]
+                tools_enabled: true
+      responses:
+        '201':
+          description: Agent created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+        '400':
+          description: Invalid agent configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Agent with same ID already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    get:
+      summary: List all agents
+      description: Retrieve a list of all agents in the swarm
+      operationId: listAgents
+      tags:
+        - Agent Management
+      parameters:
+        - name: status
+          in: query
+          description: Filter agents by status
+          schema:
+            type: string
+            enum: [active, idle, error, offline]
+        - name: agent_type
+          in: query
+          description: Filter agents by type
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of agents to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          description: Number of agents to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of agents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Agent'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  /agents/{agent_id}:
+    get:
+      summary: Get agent by ID
+      description: Retrieve detailed information about a specific agent
+      operationId: getAgent
+      tags:
+        - Agent Management
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          description: Unique agent identifier
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Agent details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+        '404':
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update agent configuration
+      description: Update the configuration of an existing agent
+      operationId: updateAgent
+      tags:
+        - Agent Management
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          description: Unique agent identifier
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentConfigUpdate'
+      responses:
+        '200':
+          description: Agent updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete agent
+      description: Remove an agent from the swarm
+      operationId: deleteAgent
+      tags:
+        - Agent Management
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          description: Unique agent identifier
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Agent deleted successfully
+        '404':
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Agent cannot be deleted (has active tasks)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /agents/{agent_id}/metrics:
+    get:
+      summary: Get agent metrics
+      description: Retrieve performance and resource usage metrics for an agent
+      operationId: getAgentMetrics
+      tags:
+        - Agent Management
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          description: Unique agent identifier
+          schema:
+            type: string
+            format: uuid
+        - name: timeframe
+          in: query
+          description: Metrics timeframe
+          schema:
+            type: string
+            enum: ["5min", "1hour", "1day", "1week"]
+            default: "1hour"
+      responses:
+        '200':
+          description: Agent metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentMetrics'
+
+  /agents/{agent_id}/tasks:
+    post:
+      summary: Assign task to agent
+      description: Create and assign a new task to a specific agent
+      operationId: createAgentTask
+      tags:
+        - Agent Management
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          description: Unique agent identifier
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+      responses:
+        '201':
+          description: Task created and assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Invalid task request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Swarm Coordination API
+  /swarms:
+    post:
+      summary: Create new swarm
+      description: Create a new swarm for coordinated agent operations
+      operationId: createSwarm
+      tags:
+        - Swarm Coordination
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwarmConfig'
+      responses:
+        '201':
+          description: Swarm created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Swarm'
+        '400':
+          description: Invalid swarm configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      summary: List all swarms
+      description: Retrieve a list of all swarms
+      operationId: listSwarms
+      tags:
+        - Swarm Coordination
+      responses:
+        '200':
+          description: List of swarms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Swarm'
+
+  /swarms/{swarm_id}/status:
+    get:
+      summary: Get swarm status
+      description: Retrieve the current status and health of a swarm
+      operationId: getSwarmStatus
+      tags:
+        - Swarm Coordination
+      parameters:
+        - name: swarm_id
+          in: path
+          required: true
+          description: Unique swarm identifier
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Swarm status information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwarmStatus'
+
+  /swarms/{swarm_id}/tasks:
+    post:
+      summary: Create swarm task
+      description: Create a coordinated task for the swarm
+      operationId: createSwarmTask
+      tags:
+        - Swarm Coordination
+      parameters:
+        - name: swarm_id
+          in: path
+          required: true
+          description: Unique swarm identifier
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwarmTaskRequest'
+      responses:
+        '201':
+          description: Swarm task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwarmTask'
+
+  /swarms/{swarm_id}/agents:
+    get:
+      summary: Get swarm agents
+      description: List all agents participating in a swarm
+      operationId: getSwarmAgents
+      tags:
+        - Swarm Coordination
+      parameters:
+        - name: swarm_id
+          in: path
+          required: true
+          description: Unique swarm identifier
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of agents in swarm
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SwarmAgent'
+
+    post:
+      summary: Add agent to swarm
+      description: Add an existing agent to a swarm
+      operationId: addAgentToSwarm
+      tags:
+        - Swarm Coordination
+      parameters:
+        - name: swarm_id
+          in: path
+          required: true
+          description: Unique swarm identifier
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                agent_id:
+                  type: string
+                  format: uuid
+                role:
+                  type: string
+                  enum: ["leader", "follower", "observer"]
+              required: [agent_id]
+      responses:
+        '201':
+          description: Agent added to swarm
+        '404':
+          description: Agent or swarm not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /swarms/{swarm_id}/topology:
+    put:
+      summary: Update swarm topology
+      description: Modify the network topology and agent relationships in a swarm
+      operationId: updateSwarmTopology
+      tags:
+        - Swarm Coordination
+      parameters:
+        - name: swarm_id
+          in: path
+          required: true
+          description: Unique swarm identifier
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwarmTopology'
+      responses:
+        '200':
+          description: Topology updated successfully
+
+  # Storage Management API
+  /storage/blocks:
+    post:
+      summary: Store data block
+      description: Store a new data block in the content-addressable storage
+      operationId: storeBlock
+      tags:
+        - Storage Management
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: string
+                  format: base64
+                compression:
+                  type: string
+                  enum: ["none", "zstd", "lz4"]
+                  default: "zstd"
+                encryption:
+                  type: boolean
+                  default: false
+      responses:
+        '201':
+          description: Block stored successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageBlock'
+        '400':
+          description: Invalid block data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      summary: List storage blocks
+      description: List blocks in storage with filtering options
+      operationId: listBlocks
+      tags:
+        - Storage Management
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: created_after
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: List of storage blocks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StorageBlockMetadata'
+
+  /storage/blocks/{hash}:
+    get:
+      summary: Retrieve data block
+      description: Retrieve a data block by its content hash
+      operationId: getBlock
+      tags:
+        - Storage Management
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          description: BLAKE3 content hash of the block
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{64}$'
+      responses:
+        '200':
+          description: Block data
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Block not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete data block
+      description: Remove a data block from storage
+      operationId: deleteBlock
+      tags:
+        - Storage Management
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          description: BLAKE3 content hash of the block
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{64}$'
+      responses:
+        '204':
+          description: Block deleted successfully
+        '404':
+          description: Block not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Block is referenced by other objects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /storage/usage:
+    get:
+      summary: Get storage usage statistics
+      description: Retrieve detailed storage usage and performance metrics
+      operationId: getStorageUsage
+      tags:
+        - Storage Management
+      responses:
+        '200':
+          description: Storage usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageUsage'
+
+  /storage/gc:
+    post:
+      summary: Trigger garbage collection
+      description: Initiate garbage collection to reclaim unused storage space
+      operationId: triggerGarbageCollection
+      tags:
+        - Storage Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dry_run:
+                  type: boolean
+                  default: false
+                  description: If true, return what would be deleted without actually deleting
+                max_age_days:
+                  type: integer
+                  minimum: 1
+                  description: Delete unreferenced blocks older than this many days
+      responses:
+        '202':
+          description: Garbage collection initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GarbageCollectionResult'
+
+  # Network Monitoring API
+  /network/peers:
+    get:
+      summary: List network peers
+      description: Retrieve information about all known network peers
+      operationId: listPeers
+      tags:
+        - Network Monitoring
+      parameters:
+        - name: status
+          in: query
+          description: Filter peers by connection status
+          schema:
+            type: string
+            enum: [connected, connecting, disconnected]
+        - name: include_metrics
+          in: query
+          description: Include detailed network metrics
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: List of network peers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NetworkPeer'
+
+  /network/peers/{peer_id}:
+    delete:
+      summary: Disconnect from peer
+      description: Forcibly disconnect from a specific peer
+      operationId: disconnectPeer
+      tags:
+        - Network Monitoring
+      parameters:
+        - name: peer_id
+          in: path
+          required: true
+          description: libp2p peer identifier
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Peer disconnected successfully
+        '404':
+          description: Peer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /network/topology:
+    get:
+      summary: Get network topology
+      description: Retrieve the current P2P network topology and mesh structure
+      operationId: getNetworkTopology
+      tags:
+        - Network Monitoring
+      responses:
+        '200':
+          description: Network topology information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkTopology'
+
+  /network/metrics:
+    get:
+      summary: Get network metrics
+      description: Retrieve network performance and usage metrics
+      operationId: getNetworkMetrics
+      tags:
+        - Network Monitoring
+      parameters:
+        - name: timeframe
+          in: query
+          description: Metrics timeframe
+          schema:
+            type: string
+            enum: ["5min", "1hour", "1day"]
+            default: "1hour"
+      responses:
+        '200':
+          description: Network performance metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkMetrics'
+
+  /network/connect:
+    post:
+      summary: Connect to peer
+      description: Initiate connection to a specific peer
+      operationId: connectToPeer
+      tags:
+        - Network Monitoring
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                multiaddr:
+                  type: string
+                  description: Multiaddress of the peer to connect to
+                  example: "/ip4/192.168.1.100/tcp/4001/p2p/12D3KooW..."
+              required: [multiaddr]
+      responses:
+        '201':
+          description: Connection initiated successfully
+        '400':
+          description: Invalid multiaddress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # WebSocket endpoint for real-time events
+  /events:
+    get:
+      summary: WebSocket connection for real-time events
+      description: |
+        Establish WebSocket connection to receive real-time events including:
+        - Agent status changes
+        - Network topology updates
+        - Task progress notifications
+        - System alerts and warnings
+      operationId: connectWebSocket
+      tags:
+        - Events
+      parameters:
+        - name: Connection
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: ["Upgrade"]
+        - name: Upgrade
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: ["websocket"]
+      responses:
+        '101':
+          description: WebSocket connection established
+        '400':
+          description: Invalid WebSocket request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Error:
+      type: object
+      required: [error_code, message]
+      properties:
+        error_code:
+          type: string
+          enum:
+            - INVALID_REQUEST
+            - RESOURCE_NOT_FOUND
+            - CONFLICT
+            - INTERNAL_ERROR
+            - AUTHENTICATION_REQUIRED
+            - AUTHORIZATION_FAILED
+            - RATE_LIMIT_EXCEEDED
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error context
+        request_id:
+          type: string
+          format: uuid
+          description: Unique request identifier for debugging
+
+    AgentConfig:
+      type: object
+      required: [agent_type, capabilities]
+      properties:
+        agent_type:
+          type: string
+          enum: ["cto", "product_manager", "qa_engineer", "developer", "designer"]
+        capabilities:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          example: ["code_review", "testing", "documentation"]
+        resource_limits:
+          $ref: '#/components/schemas/ResourceLimits'
+        config:
+          type: object
+          additionalProperties: true
+
+    AgentConfigUpdate:
+      type: object
+      properties:
+        capabilities:
+          type: array
+          items:
+            type: string
+        resource_limits:
+          $ref: '#/components/schemas/ResourceLimits'
+        config:
+          type: object
+          additionalProperties: true
+
+    Agent:
+      type: object
+      required: [id, agent_type, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        agent_type:
+          type: string
+          enum: ["cto", "product_manager", "qa_engineer", "developer", "designer"]
+        status:
+          type: string
+          enum: ["active", "idle", "error", "offline"]
+        capabilities:
+          type: array
+          items:
+            type: string
+        resource_limits:
+          $ref: '#/components/schemas/ResourceLimits'
+        current_resources:
+          $ref: '#/components/schemas/ResourceUsage'
+        config:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+        last_active:
+          type: string
+          format: date-time
+        peer_id:
+          type: string
+          description: libp2p peer identifier
+
+    ResourceLimits:
+      type: object
+      properties:
+        max_memory_mb:
+          type: integer
+          minimum: 128
+          maximum: 8192
+          default: 512
+        max_cpu_percent:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
+        max_disk_mb:
+          type: integer
+          minimum: 100
+          maximum: 10240
+          default: 1024
+
+    ResourceUsage:
+      type: object
+      properties:
+        memory_mb:
+          type: number
+          format: float
+        cpu_percent:
+          type: number
+          format: float
+        disk_mb:
+          type: number
+          format: float
+
+    AgentMetrics:
+      type: object
+      properties:
+        agent_id:
+          type: string
+          format: uuid
+        timeframe:
+          type: string
+        metrics:
+          type: object
+          properties:
+            tasks_completed:
+              type: integer
+            tasks_failed:
+              type: integer
+            average_task_duration_ms:
+              type: number
+            resource_usage:
+              $ref: '#/components/schemas/ResourceUsage'
+            network_bytes_sent:
+              type: integer
+            network_bytes_received:
+              type: integer
+
+    TaskRequest:
+      type: object
+      required: [task_type, payload]
+      properties:
+        task_type:
+          type: string
+          enum: ["code_review", "test_execution", "deployment", "analysis"]
+        payload:
+          type: object
+          additionalProperties: true
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+        timeout_ms:
+          type: integer
+          minimum: 1000
+          default: 300000
+
+    Task:
+      type: object
+      required: [id, task_type, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        task_type:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+          enum: ["pending", "running", "completed", "failed", "cancelled"]
+        priority:
+          type: integer
+        result:
+          type: object
+          additionalProperties: true
+        error:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        agent_id:
+          type: string
+          format: uuid
+
+    SwarmConfig:
+      type: object
+      required: [name, coordination_strategy]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        coordination_strategy:
+          type: string
+          enum: ["consensus", "leader_follower", "peer_to_peer"]
+        agent_requirements:
+          type: array
+          items:
+            type: object
+            properties:
+              agent_type:
+                type: string
+              minimum_count:
+                type: integer
+                minimum: 1
+              maximum_count:
+                type: integer
+
+    Swarm:
+      type: object
+      required: [id, name, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        coordination_strategy:
+          type: string
+        status:
+          type: string
+          enum: ["forming", "active", "suspended", "terminated"]
+        agent_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        leader_id:
+          type: string
+          format: uuid
+
+    SwarmStatus:
+      type: object
+      properties:
+        swarm_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: ["forming", "active", "suspended", "terminated"]
+        agent_count:
+          type: integer
+        health_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        active_tasks:
+          type: integer
+        completed_tasks:
+          type: integer
+        failed_tasks:
+          type: integer
+
+    SwarmTaskRequest:
+      type: object
+      required: [task_type, coordination_type]
+      properties:
+        task_type:
+          type: string
+        coordination_type:
+          type: string
+          enum: ["parallel", "sequential", "consensus"]
+        payload:
+          type: object
+          additionalProperties: true
+        agent_assignments:
+          type: object
+          additionalProperties:
+            type: string
+
+    SwarmTask:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        swarm_id:
+          type: string
+          format: uuid
+        task_type:
+          type: string
+        coordination_type:
+          type: string
+        status:
+          type: string
+          enum: ["pending", "running", "completed", "failed"]
+        sub_tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+
+    SwarmAgent:
+      type: object
+      properties:
+        agent_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: ["leader", "follower", "observer"]
+        status:
+          type: string
+          enum: ["active", "idle", "error", "offline"]
+        join_time:
+          type: string
+          format: date-time
+
+    SwarmTopology:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            type: object
+            properties:
+              agent_id:
+                type: string
+                format: uuid
+              role:
+                type: string
+        connections:
+          type: array
+          items:
+            type: object
+            properties:
+              from_agent:
+                type: string
+                format: uuid
+              to_agent:
+                type: string
+                format: uuid
+              connection_type:
+                type: string
+
+    StorageBlock:
+      type: object
+      required: [hash, size, created_at]
+      properties:
+        hash:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: BLAKE3 content hash
+        size:
+          type: integer
+          minimum: 0
+        compressed_size:
+          type: integer
+          minimum: 0
+        compression:
+          type: string
+          enum: ["none", "zstd", "lz4"]
+        encrypted:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        access_count:
+          type: integer
+        last_accessed:
+          type: string
+          format: date-time
+
+    StorageBlockMetadata:
+      type: object
+      properties:
+        hash:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        size:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+
+    StorageUsage:
+      type: object
+      properties:
+        total_blocks:
+          type: integer
+        total_size_bytes:
+          type: integer
+        compressed_size_bytes:
+          type: integer
+        compression_ratio:
+          type: number
+          format: float
+        deduplication_ratio:
+          type: number
+          format: float
+        available_space_bytes:
+          type: integer
+        performance_metrics:
+          type: object
+          properties:
+            read_ops_per_second:
+              type: number
+            write_ops_per_second:
+              type: number
+            average_read_latency_ms:
+              type: number
+            average_write_latency_ms:
+              type: number
+
+    GarbageCollectionResult:
+      type: object
+      properties:
+        task_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: ["running", "completed", "failed"]
+        blocks_deleted:
+          type: integer
+        space_reclaimed_bytes:
+          type: integer
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+
+    NetworkPeer:
+      type: object
+      properties:
+        peer_id:
+          type: string
+        addresses:
+          type: array
+          items:
+            type: string
+        connection_status:
+          type: string
+          enum: ["connected", "connecting", "disconnected"]
+        site_id:
+          type: string
+        agent_role:
+          type: string
+        last_seen:
+          type: string
+          format: date-time
+        network_metrics:
+          type: object
+          properties:
+            latency_ms:
+              type: number
+            bytes_sent:
+              type: integer
+            bytes_received:
+              type: integer
+            connection_duration_seconds:
+              type: integer
+
+    NetworkTopology:
+      type: object
+      properties:
+        local_peer_id:
+          type: string
+        peer_count:
+          type: integer
+        connections:
+          type: array
+          items:
+            type: object
+            properties:
+              peer_id:
+                type: string
+              direction:
+                type: string
+                enum: ["inbound", "outbound", "bidirectional"]
+              connection_time:
+                type: string
+                format: date-time
+        mesh_health:
+          type: object
+          properties:
+            connected_peers:
+              type: integer
+            average_latency_ms:
+              type: number
+            partition_risk_score:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+
+    NetworkMetrics:
+      type: object
+      properties:
+        timeframe:
+          type: string
+        peer_count:
+          type: integer
+        total_bytes_sent:
+          type: integer
+        total_bytes_received:
+          type: integer
+        average_latency_ms:
+          type: number
+        message_throughput:
+          type: object
+          properties:
+            messages_per_second:
+              type: number
+            bytes_per_second:
+              type: number
+        connection_events:
+          type: object
+          properties:
+            connections_established:
+              type: integer
+            connections_closed:
+              type: integer
+            connection_failures:
+              type: integer
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Agent Management
+    description: Agent lifecycle and configuration management
+  - name: Swarm Coordination
+    description: Multi-agent coordination and task distribution
+  - name: Storage Management
+    description: Content-addressable storage operations
+  - name: Network Monitoring
+    description: P2P network monitoring and management
+  - name: Events
+    description: Real-time event streaming via WebSocket

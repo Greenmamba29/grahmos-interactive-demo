@@ -1,0 +1,49 @@
+[package]
+name = "prism-grahmos"
+version = "0.1.0"
+edition = "2021"
+description = "Grahmos OS integration layer for PRISM offline-first operation"
+authors = ["PRISM Team"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+futures = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+tracing = "0.1"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# File system operations
+notify = "6.1"  # File system watching
+tempfile = "3.8"  # Temporary files
+
+# System integration
+[target.'cfg(unix)'.dependencies]
+nix = "0.27"  # Unix system calls
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winuser", "processthreadsapi"] }
+
+[dev-dependencies]
+tempfile = "3.8"
+tokio-test = "0.4"
+
+[features]
+default = ["system-integration"]
+
+# Enable system-level integration
+system-integration = []
+
+# Mock interfaces for testing
+mock-interfaces = []
