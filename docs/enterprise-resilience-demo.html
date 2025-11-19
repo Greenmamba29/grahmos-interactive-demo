@@ -6,16 +6,16 @@
     <title>GrahmOS - Enterprise SaaS Resilience Demo</title>
     <style>
         :root {
-            --color-bg-light: #f8fafc;
-            --color-surface: #ffffff;
-            --color-accent: #0ea5e9;
-            --color-accent-hover: #0284c7;
-            --color-text: #0f172a;
-            --color-text-muted: #475569;
+            --color-bg-dark: #0f172a;
+            --color-surface: #1e293b;
+            --color-accent: #38bdf8;
+            --color-accent-hover: #0ea5e9;
+            --color-text: #f1f5f9;
+            --color-text-muted: #94a3b8;
             --color-success: #22c55e;
-            --color-warning: #f59e0b;
+            --color-warning: #eab308;
             --color-error: #ef4444;
-            --color-border: #e2e8f0;
+            --color-border: #334155;
         }
 
         * {
@@ -26,7 +26,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8fafc;
+            background: var(--color-bg-dark);
             color: var(--color-text);
             overflow-x: hidden;
             min-height: 100vh;
@@ -40,7 +40,7 @@
 
         /* Header */
         .demo-header {
-            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            background: linear-gradient(135deg, var(--color-surface), #0f172a);
             border-bottom: 2px solid var(--color-accent);
             padding: 20px;
             position: relative;
@@ -50,11 +50,13 @@
         .demo-header h1 {
             font-size: 1.8rem;
             margin-bottom: 5px;
-            color: white;
+            background: linear-gradient(135deg, var(--color-accent), #0ea5e9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .demo-header p {
-            color: rgba(255, 255, 255, 0.9);
+            color: var(--color-text-muted);
             font-size: 0.9rem;
         }
 
@@ -63,12 +65,12 @@
             position: absolute;
             top: 10px;
             right: 20px;
-            color: rgba(255, 255, 255, 0.9);
+            color: var(--color-text-muted);
             font-size: 0.85rem;
         }
 
         .breadcrumb a {
-            color: white;
+            color: var(--color-accent);
             text-decoration: none;
         }
 
@@ -82,18 +84,18 @@
         }
 
         .split-panel {
-            background: #ffffff;
+            background: var(--color-bg-dark);
             padding: 30px;
             overflow-y: auto;
             position: relative;
         }
 
         .split-panel.failed {
-            background: linear-gradient(135deg, rgba(254, 242, 242, 1), rgba(254, 226, 226, 0.5));
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(220, 38, 38, 0.02));
         }
 
         .split-panel.success {
-            background: linear-gradient(135deg, rgba(240, 253, 244, 1), rgba(220, 252, 231, 0.5));
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(22, 163, 74, 0.02));
         }
 
         .panel-header {
@@ -167,10 +169,9 @@
         }
 
         .service-card {
-            background: #f8fafc;
+            background: rgba(15, 23, 42, 0.6);
             border-radius: 10px;
             padding: 18px;
-            border: 2px solid var(--color-border);
             border-left: 4px solid var(--color-border);
             transition: all 0.3s ease;
         }
