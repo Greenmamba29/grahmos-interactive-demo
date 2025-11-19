@@ -95,12 +95,140 @@
             flex-direction: column;
             overflow-y: auto;
             z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 50px;
+        }
+
+        .sidebar.collapsed .sidebar-header h1,
+        .sidebar.collapsed .sidebar-header p,
+        .sidebar.collapsed .nav-controls,
+        .sidebar.collapsed .network-status .status-indicator,
+        .sidebar.collapsed .network-status .toggle-btn,
+        .sidebar.collapsed .section-header .section-title,
+        .sidebar.collapsed .section-content,
+        .sidebar.collapsed .components-section {
+            display: none;
         }
 
         .sidebar-header {
             padding: 15px 20px;
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             border-bottom: 2px solid var(--color-accent);
+            position: relative;
+        }
+
+        .user-profile {
+            position: absolute;
+            top: 15px;
+            right: 55px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--color-accent), #0ea5e9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-bg-dark);
+            font-weight: 700;
+            font-size: 0.9rem;
+            border: 2px solid var(--color-border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .user-profile:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4);
+        }
+
+        .sidebar-collapse-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(14, 165, 233, 0.1));
+            border: 2px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            color: var(--color-accent);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .sidebar-collapse-btn span {
+            width: 22px;
+            height: 2.5px;
+            background: var(--color-accent);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-collapse-btn:hover {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(14, 165, 233, 0.2));
+            border-color: var(--color-accent);
+            transform: scale(1.05);
+            box-shadow: 0 4px 16px rgba(56, 189, 248, 0.3);
+        }
+        
+        .sidebar-collapse-btn:hover span {
+            background: var(--color-accent);
+        }
+        
+        .sidebar-collapse-btn.active span:nth-child(1) {
+            transform: translateY(5px) rotate(45deg);
+        }
+        
+        .sidebar-collapse-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+        
+        .sidebar-collapse-btn.active span:nth-child(3) {
+            transform: translateY(-5px) rotate(-45deg);
+        }
+
+        .session-logs {
+            padding: 16px 20px;
+            background: rgba(15, 23, 42, 0.6);
+            border-top: 1px solid var(--color-border);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .session-logs h4 {
+            color: var(--color-accent);
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .session-log-entry {
+            font-size: 0.75rem;
+            padding: 6px 10px;
+            margin-bottom: 4px;
+            background: rgba(56, 189, 248, 0.05);
+            border-left: 2px solid var(--color-accent);
+            border-radius: 4px;
+            color: var(--color-text-muted);
+            line-height: 1.4;
+        }
+
+        .session-log-entry .log-time {
+            color: var(--color-accent);
+            font-weight: 600;
         }
 
         .sidebar-header h1 {
@@ -140,11 +268,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 2px;
+            gap: 4px;
             min-width: 0;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            overflow: visible;
+            text-overflow: clip;
         }
 
         .nav-btn:hover {
@@ -186,7 +314,7 @@
             position: relative;
             display: inline-flex;
             align-items: center;
-            cursor: help;
+            cursor: pointer;
         }
 
         .info-tooltip::after {
@@ -325,12 +453,6 @@
         .scenario-selector {
             padding: 20px;
             border-bottom: 1px solid var(--color-border);
-        }
-
-        .scenario-selector h3 {
-            color: var(--color-accent);
-            margin-bottom: 12px;
-            font-size: 1rem;
         }
 
         .scenario-btn {
@@ -487,6 +609,11 @@
             height: 100%;
         }
 
+        /* Move Leaflet zoom controls down */
+        .leaflet-top.leaflet-left {
+            top: 60px;
+        }
+
         /* Map Legend */
         .map-legend {
             position: absolute;
@@ -640,10 +767,20 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
+                <!-- User Profile -->
+                <div class="user-profile info-tooltip" data-tooltip="Logged in as Demo User" title="Demo User">
+                    DU
+                </div>
+                <!-- Sidebar Collapse Button -->
+                <div class="sidebar-collapse-btn info-tooltip" id="sidebarCollapseBtn" data-tooltip="Collapse sidebar" onclick="toggleSidebar()">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
                 <h1>🏟️ GrahmOS Emergency Response</h1>
                 <p>Interactive Demo - Large-Scale Venue Scenario</p>
                 <div class="nav-controls">
-                    <button class="nav-btn info-tooltip" id="backBtn" data-tooltip="Return to demo introduction" onclick="window.location.href='demo-intro.html'">← Intro</button>
+                    <button class="nav-btn info-tooltip" id="backBtn" data-tooltip="Return to demo introduction" onclick="window.location.href='demo-intro.html'">← Back</button>
                     <button class="nav-btn info-tooltip" id="accordionToggle" data-tooltip="Toggle sidebar sections (Cmd+M)">☰ Menu</button>
                     <button class="nav-btn info-tooltip" id="nextBtn" data-tooltip="See enterprise SaaS resilience demo" onclick="window.location.href='enterprise-resilience-demo.html'">Enterprise →</button>
                     <button class="nav-btn info-tooltip" id="recordBtn" data-tooltip="Record demo walkthrough for training/review">● Record</button>
@@ -662,14 +799,13 @@
             <!-- Content Section -->
             <div class="section-header" id="contentSectionHeader">
                 <div class="section-title">
-                    📄 CONTENT
+                    🎆 SCENARIOS
                 </div>
                 <div class="section-toggle" id="contentToggle">▼</div>
             </div>
             <div class="section-content" id="contentSection">
                 <!-- Scenario Selector -->
                 <div class="scenario-selector">
-                    <h3>Emergency Scenarios</h3>
                     <button class="scenario-btn active" data-scenario="medical">
                         <span class="scenario-icon">🚑</span>
                         <strong>Medical Emergency</strong>
@@ -727,7 +863,7 @@
             <div class="components-section">
                 <div class="section-header" id="componentsSectionHeader">
                     <div class="section-title">
-                        🔧 COMPONENTS
+                        🤖 AI & SYSTEM TOOLS
                     </div>
                     <div class="section-toggle" id="componentsToggle">▼</div>
                 </div>
@@ -774,6 +910,14 @@
                             <div style="margin-top: 4px;">Section 214, Row 18, Seat 12</div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Session Logs -->
+            <div class="session-logs" id="sessionLogs" style="display: none;">
+                <h4>📝 Session Recording</h4>
+                <div id="sessionLogEntries">
+                    <!-- Log entries will be added here dynamically -->
                 </div>
             </div>
         </div>
@@ -1073,18 +1217,23 @@
             this.textContent = isRecording ? '■ Stop' : '● Record';
             this.classList.toggle('recording', isRecording);
             
+            const sessionLogs = document.getElementById('sessionLogs');
+            const sessionLogEntries = document.getElementById('sessionLogEntries');
+            
             if (isRecording) {
                 // Start recording
                 recordingStartTime = Date.now();
                 recordedActions = [];
-                logRecordedAction('Recording Started', `Session initiated at ${new Date().toLocaleTimeString()}`);
+                sessionLogs.style.display = 'block';
+                sessionLogEntries.innerHTML = '';
+                addSessionLog('Recording Started', `Session initiated at ${new Date().toLocaleTimeString()}`);
                 showTooltip('📹 Recording demo session - All actions will be logged', 2000);
                 console.log('%c📹 Recording Started', 'color: #ef4444; font-weight: bold;');
             } else {
-                // Stop recording and show summary
+                // Stop recording and show summary in logs
                 const duration = ((Date.now() - recordingStartTime) / 1000).toFixed(1);
-                logRecordedAction('Recording Stopped', `Duration: ${duration}s, Actions: ${recordedActions.length}`);
-                showRecordingSummary(duration);
+                addSessionLog('Recording Stopped', `Duration: ${duration}s | Actions: ${recordedActions.length}`);
+                showTooltip(`📹 Recording complete: ${duration}s, ${recordedActions.length} actions logged`, 3000);
                 console.log('%c■ Recording Stopped', 'color: #ef4444; font-weight: bold;');
                 console.log(`📊 Session Summary: ${recordedActions.length} actions in ${duration}s`);
                 console.table(recordedActions);
@@ -1101,18 +1250,19 @@
                     scenario: currentScenario,
                     networkMode: connectionMode
                 });
+                addSessionLog(action, details, timestamp);
                 console.log(`[${timestamp}s] ${action}: ${details}`);
             }
         }
         
-        function showRecordingSummary(duration) {
-            const summary = `📹 Recording Session Complete\n\n` +
-                `Duration: ${duration} seconds\n` +
-                `Actions Recorded: ${recordedActions.length}\n` +
-                `Network Mode: ${connectionMode}\n\n` +
-                `Actions:\n${recordedActions.map((a, i) => `${i + 1}. [${a.time}] ${a.action}`).join('\n')}\n\n` +
-                `Full details available in browser console (F12)`;
-            alert(summary);
+        function addSessionLog(action, details, timestamp) {
+            const sessionLogEntries = document.getElementById('sessionLogEntries');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'session-log-entry';
+            const time = timestamp || new Date().toLocaleTimeString();
+            logEntry.innerHTML = `<span class="log-time">[${time}]</span> ${action}: ${details}`;
+            sessionLogEntries.appendChild(logEntry);
+            sessionLogEntries.scrollTop = sessionLogEntries.scrollHeight;
         }
 
         function getNetworkLabel() {
@@ -1409,6 +1559,23 @@
 
         // Removed unused loadRouteData function - data is loaded directly from scenario functions
 
+        // Sidebar collapse/expand toggle
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const collapseBtn = document.getElementById('sidebarCollapseBtn');
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            if (isCollapsed) {
+                collapseBtn.innerHTML = '←';
+                collapseBtn.setAttribute('data-tooltip', 'Collapse sidebar');
+            } else {
+                collapseBtn.innerHTML = '→';
+                collapseBtn.setAttribute('data-tooltip', 'Expand sidebar');
+            }
+        }
+
         // Hamburger menu: collapse/expand all sidebar sections
         function setupAccordionToggles() {
             let sectionsCollapsed = false;
@@ -1421,17 +1588,20 @@
                 const contentToggle = document.getElementById('contentToggle');
                 const componentsSection = document.getElementById('componentsSection');
                 const componentsToggle = document.getElementById('componentsToggle');
+                const collapseBtn = document.getElementById('sidebarCollapseBtn');
 
                 if (sectionsCollapsed) {
                     contentSection.classList.add('collapsed');
                     contentToggle.classList.add('collapsed');
                     componentsSection.classList.add('collapsed');
                     componentsToggle.classList.add('collapsed');
+                    collapseBtn.classList.add('active');
                 } else {
                     contentSection.classList.remove('collapsed');
                     contentToggle.classList.remove('collapsed');
                     componentsSection.classList.remove('collapsed');
                     componentsToggle.classList.remove('collapsed');
+                    collapseBtn.classList.remove('active');
                 }
             };
             

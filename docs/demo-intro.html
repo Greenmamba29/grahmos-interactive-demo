@@ -10,8 +10,8 @@
             --color-surface: #1e293b;
             --color-accent: #38bdf8;
             --color-accent-hover: #0ea5e9;
-            --color-text: #f1f5f9;
-            --color-text-muted: #94a3b8;
+            --color-text: #ffffff;
+            --color-text-muted: #cbd5e1;
             --color-success: #22c55e;
             --color-warning: #eab308;
             --color-error: #ef4444;
@@ -49,10 +49,12 @@
         .hero h1 {
             font-size: 3rem;
             margin-bottom: 20px;
-            background: linear-gradient(135deg, var(--color-accent), #0ea5e9);
+            background: linear-gradient(135deg, #38bdf8, #60a5fa, #3b82f6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            font-weight: 800;
+            letter-spacing: -0.02em;
         }
 
         .hero-subtitle {
@@ -110,9 +112,10 @@
 
         .stat-label {
             font-size: 0.9rem;
-            color: var(--color-text-muted);
+            color: var(--color-text);
             text-transform: uppercase;
             letter-spacing: 1px;
+            font-weight: 600;
         }
 
         .section {
@@ -163,8 +166,9 @@
         }
 
         .step-content p {
-            color: var(--color-text-muted);
+            color: var(--color-text);
             line-height: 1.6;
+            font-weight: 500;
         }
 
         .highlight {
@@ -193,8 +197,73 @@
         }
 
         .value-prop p {
-            color: var(--color-text-muted);
+            color: var(--color-text);
+        }
+        
+        /* Page entry animations */
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .hero {
+            animation: fadeInScale 0.6s ease backwards;
+        }
+        
+        .stat-card {
+            animation: slideInUp 0.5s ease backwards;
+        }
+        
+        .stat-card:nth-child(1) { animation-delay: 0.1s; }
+        .stat-card:nth-child(2) { animation-delay: 0.2s; }
+        .stat-card:nth-child(3) { animation-delay: 0.3s; }
+        .stat-card:nth-child(4) { animation-delay: 0.4s; }
+        
+        .section {
+            animation: slideInUp 0.5s ease backwards;
+            animation-delay: 0.5s;
+        }
+        
+        .launch-btn {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .launch-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s ease, height 0.6s ease;
+        }
+        
+        .launch-btn:hover::before {
+            width: 400px;
+            height: 400px;
             font-size: 0.95rem;
+            font-weight: 500;
         }
 
         .footer {
@@ -258,8 +327,8 @@
 
         <div class="section">
             <h2>📋 Interactive Demo Guide</h2>
-            <p style="margin-bottom: 30px; color: var(--color-text-muted);">
-                Follow these steps to experience the billion-dollar value proposition in under 3 minutes.
+            <p style="margin-bottom: 30px; color: var(--color-text); font-weight: 600;">
+                Follow these steps to experience the platform in under 3 minutes.
             </p>
 
             <div class="demo-steps">
@@ -275,7 +344,7 @@
                     <div class="step-number">2</div>
                     <div class="step-content">
                         <h3>Click the <span class="highlight">"Outage"</span> Button</h3>
-                        <p>Simulates complete network failure. Watch the red alert banner appear. <strong>Everything keeps working.</strong> This is the "when AWS fails" moment.</p>
+                        <p>Simulates complete network failure. Watch the red alert banner appear. <strong>Everything keeps working.</strong> This demonstrates offline resilience that complements cloud infrastructure.</p>
                     </div>
                 </a>
 
@@ -321,25 +390,33 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
                 <div style="padding: 15px; background: rgba(56, 189, 248, 0.05); border-radius: 8px; border-left: 3px solid var(--color-accent);">
                     <strong style="color: var(--color-accent);">🏛️ Critical Infrastructure</strong><br>
-                    <span style="color: var(--color-text-muted); font-size: 0.9rem;">Cities, Olympics, grid operators, government facilities</span>
+                    <span style="color: var(--color-text); font-size: 0.9rem; font-weight: 600;">Cities, Olympics, grid operators, government facilities</span>
                 </div>
                 <div style="padding: 15px; background: rgba(56, 189, 248, 0.05); border-radius: 8px; border-left: 3px solid var(--color-accent);">
                     <strong style="color: var(--color-accent);">🏟️ Large Venues</strong><br>
-                    <span style="color: var(--color-text-muted); font-size: 0.9rem;">Stadiums, arenas, convention centers, airports</span>
+                    <span style="color: var(--color-text); font-size: 0.9rem; font-weight: 600;">Stadiums, arenas, convention centers, airports</span>
                 </div>
                 <div style="padding: 15px; background: rgba(56, 189, 248, 0.05); border-radius: 8px; border-left: 3px solid var(--color-accent);">
                     <strong style="color: var(--color-accent);">🌐 Global South</strong><br>
-                    <span style="color: var(--color-text-muted); font-size: 0.9rem;">Emerging regions with unreliable connectivity</span>
+                    <span style="color: var(--color-text); font-size: 0.9rem; font-weight: 600;">Emerging regions with unreliable connectivity</span>
                 </div>
                 <div style="padding: 15px; background: rgba(56, 189, 248, 0.05); border-radius: 8px; border-left: 3px solid var(--color-accent);">
                     <strong style="color: var(--color-accent);">⚕️ Healthcare</strong><br>
-                    <span style="color: var(--color-text-muted); font-size: 0.9rem;">Hospitals, clinics, emergency medical services</span>
+                    <span style="color: var(--color-text); font-size: 0.9rem; font-weight: 600;">Hospitals, clinics, emergency medical services</span>
+                </div>
+                <div style="padding: 15px; background: rgba(56, 189, 248, 0.05); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+                    <strong style="color: var(--color-accent);">🏫 Schools & Universities</strong><br>
+                    <span style="color: var(--color-text); font-size: 0.9rem; font-weight: 600;">Educational institutions, campus safety, distance learning</span>
+                </div>
+                <div style="padding: 15px; background: rgba(56, 189, 248, 0.05); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+                    <strong style="color: var(--color-accent);">🏢 Enterprise SaaS</strong><br>
+                    <span style="color: var(--color-text); font-size: 0.9rem; font-weight: 600;">Businesses requiring 100% uptime during cloud outages</span>
                 </div>
             </div>
         </div>
 
         <div class="section">
-            <h2>💼 Why This Is Worth Billions</h2>
+            <h2>💼 Market Opportunity & Value</h2>
             
             <div class="value-props">
                 <div class="value-prop">
@@ -354,7 +431,7 @@
 
                 <div class="value-prop">
                     <h4>🛡️ 100% Uptime Moat</h4>
-                    <p>Works during network outages, natural disasters, cyberattacks. Competitors go offline; we don't.</p>
+                    <p>Works during network outages, natural disasters, cyberattacks. Provides resilience when cloud-dependent systems fail.</p>
                 </div>
 
                 <div class="value-prop">
@@ -363,8 +440,8 @@
                 </div>
 
                 <div class="value-prop">
-                    <h4>💵 $500M+ TAM</h4>
-                    <p>30,000+ stadiums/venues globally. Each pays $50K-500K/year. This is one vertical of many.</p>
+                    <h4>💵 Multi-Billion TAM</h4>
+                    <p>Emergency resilience market + enterprise downtime costs. $700B annually lost to network outages globally. Venues, healthcare, infrastructure, enterprise SaaS.</p>
                 </div>
 
                 <div class="value-prop">
@@ -377,7 +454,7 @@
         <div class="section">
             <h2>🎬 What Happens in the Demo</h2>
             <p style="margin-bottom: 20px;">When you click "Outage", you'll see:</p>
-            <ul style="color: var(--color-text-muted); padding-left: 20px; line-height: 2;">
+            <ul style="color: var(--color-text); padding-left: 20px; line-height: 2; font-weight: 500;">
                 <li><strong style="color: var(--color-error);">Red Alert Banner:</strong> "NETWORK OUTAGE DETECTED"</li>
                 <li><strong style="color: var(--color-warning);">AI Status Update:</strong> "Offline Mode - Edge AI Active"</li>
                 <li><strong style="color: var(--color-success);">Map Still Loads:</strong> Tiles from Service Worker cache</li>
@@ -386,7 +463,7 @@
                 <li><strong style="color: var(--color-success);">Chat Components:</strong> Simulated AI interactions remain functional</li>
             </ul>
             <p style="margin-top: 20px; color: var(--color-accent); font-size: 1.1rem; font-weight: 600;">
-                This is the "when AWS fails, we don't" moment that closes billion-dollar rounds.
+                This is offline resilience that complements cloud providers, ensuring continuity when connectivity fails.
             </p>
         </div>
 
@@ -395,7 +472,7 @@
             <div style="text-align: center;">
                 <a href="emergency-maps-v2.html" class="launch-btn">🚀 Launch Demo Now</a>
             </div>
-            <p style="text-align: center; margin-top: 20px; color: var(--color-text-muted);">
+            <p style="text-align: center; margin-top: 20px; color: var(--color-text); font-weight: 600;">
                 Takes 3 minutes. Changes how you think about resilience.
             </p>
         </div>
