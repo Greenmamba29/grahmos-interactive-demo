@@ -33,3 +33,6 @@ reports/
 # Monitoring
 monitoring/data/
 monitoring/logs/
+
+# Local Netlify folder
+.netlify

@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GrahmOS - Emergency Response Platform | Interactive Demo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --color-bg-dark: #0f172a;
+            --color-surface: #1e293b;
+            --color-accent: #38bdf8;
+            --color-accent-hover: #0ea5e9;
+            --color-text: #f1f5f9;
+            --color-text-muted: #94a3b8;
+            --color-success: #22c55e;
+            --color-warning: #eab308;
+            --color-error: #ef4444;
+            --color-border: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--color-bg-dark);
+            color: var(--color-text);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .demo-container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Emergency Alert Banner */
+        .alert-banner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, var(--color-error), #dc2626);
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            font-weight: 600;
+            z-index: 1000;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        .alert-banner.active {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -20px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+            to {
+                opacity: 0;
+                transform: translate(-50%, -20px);
+            }
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 380px;
+            background: var(--color-surface);
+            border-right: 2px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-bottom: 2px solid var(--color-accent);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.3rem;
+            margin-bottom: 4px;
+            background: linear-gradient(135deg, var(--color-accent), #0ea5e9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.2;
+        }
+
+        .sidebar-header p {
+            color: var(--color-text-muted);
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+            line-height: 1.2;
+        }
+
+        /* Navigation Controls */
+        .nav-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .nav-btn {
+            padding: 8px 6px;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            border-radius: 5px;
+            color: var(--color-text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .nav-btn:hover {
+            background: rgba(56, 189, 248, 0.3);
+            border-color: var(--color-accent);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
+        }
+
+        .nav-btn:active {
+            transform: translateY(0);
+        }
+
+        .nav-btn.recording {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: var(--color-error);
+            animation: recordPulse 2s infinite;
+        }
+
+        @keyframes recordPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        @keyframes locationPulse {
+            0% {
+                box-shadow: 0 0 16px rgba(59, 130, 246, 0.6), 0 0 0 8px rgba(59, 130, 246, 0.2);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 0 12px rgba(59, 130, 246, 0.3);
+            }
+            100% {
+                box-shadow: 0 0 16px rgba(59, 130, 246, 0.6), 0 0 0 8px rgba(59, 130, 246, 0.2);
+            }
+        }
+
+        /* Info Tooltip */
+        .info-tooltip {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            cursor: help;
+        }
+
+        .info-tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-8px);
+            background: linear-gradient(135deg, var(--color-surface), #1e293b);
+            color: var(--color-text);
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--color-accent);
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .info-tooltip:hover::after {
+            opacity: 1;
+        }
+
+        .info-icon {
+            margin-left: 4px;
+            color: var(--color-text-muted);
+            font-size: 0.7rem;
+            opacity: 0.6;
+        }
+
+        .info-icon:hover {
+            opacity: 1;
+            color: var(--color-accent);
+        }
+
+        /* Network Status */
+        .network-status {
+            padding: 16px 20px;
+            background: rgba(56, 189, 248, 0.05);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--color-success);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.offline {
+            background: var(--color-error);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .toggle-btn {
+            padding: 8px 16px;
+            background: var(--color-accent);
+            color: var(--color-bg-dark);
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-btn:hover {
+            background: var(--color-accent-hover);
+            transform: translateY(-1px);
+        }
+
+        /* Content Section Header */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: rgba(56, 189, 248, 0.05);
+            border-bottom: 1px solid var(--color-border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .section-header:hover {
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .section-title {
+            color: var(--color-accent);
+            font-size: 0.95rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-toggle {
+            color: var(--color-text-muted);
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .section-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            max-height: 1000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .section-content.collapsed {
+            max-height: 0;
+        }
+
+        /* Scenario Selector */
+        .scenario-selector {
+            padding: 20px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .scenario-selector h3 {
+            color: var(--color-accent);
+            margin-bottom: 12px;
+            font-size: 1rem;
+        }
+
+        .scenario-btn {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 10px;
+            background: rgba(56, 189, 248, 0.05);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            color: var(--color-text);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        .scenario-btn:hover {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--color-accent);
+        }
+
+        .scenario-btn.active {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: var(--color-accent);
+        }
+
+        .scenario-icon {
+            margin-right: 8px;
+            font-size: 1.1rem;
+        }
+
+        /* Directory Quick Access */
+        .directory-access {
+            padding: 20px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .directory-access h3 {
+            color: var(--color-accent);
+            margin-bottom: 12px;
+            font-size: 1rem;
+        }
+
+        .directory-item {
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .directory-item:hover {
+            background: rgba(56, 189, 248, 0.1);
+            border-left: 3px solid var(--color-accent);
+            padding-left: 9px;
+        }
+
+        .directory-item strong {
+            color: var(--color-accent);
+            display: block;
+            margin-bottom: 4px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        /* Components Section */
+        .components-section {
+            border-top: 2px solid var(--color-accent);
+            background: rgba(56, 189, 248, 0.02);
+        }
+
+        /* AI Assistant Panel */
+        .ai-panel {
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(14, 165, 233, 0.05));
+        }
+
+        /* Chat Simulation */
+        .chat-simulation {
+            padding: 20px;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .chat-simulation h3 {
+            color: var(--color-accent);
+            margin-bottom: 12px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chat-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chat-option-btn {
+            padding: 10px 14px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            color: var(--color-text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        .chat-option-btn:hover {
+            background: rgba(56, 189, 248, 0.1);
+            border-color: var(--color-accent);
+            transform: translateX(4px);
+        }
+
+        .ai-panel h3 {
+            color: var(--color-accent);
+            margin-bottom: 12px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ai-status {
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .ai-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(34, 197, 94, 0.2);
+            border-radius: 12px;
+            font-size: 0.75rem;
+            color: var(--color-success);
+            margin-top: 8px;
+        }
+
+        /* Map Container */
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Map Legend */
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: var(--color-surface);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            z-index: 500;
+            min-width: 200px;
+        }
+
+        .map-legend h4 {
+            color: var(--color-accent);
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .legend-marker {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .legend-marker.medical { background: var(--color-error); }
+        .legend-marker.exit { background: var(--color-success); }
+        .legend-marker.shelter { background: var(--color-warning); }
+        .legend-marker.route { background: var(--color-accent); }
+
+        /* Info Popup Styling */
+        .leaflet-popup-content-wrapper {
+            background: var(--color-surface);
+            color: var(--color-text);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+        }
+
+        .leaflet-popup-content {
+            margin: 12px;
+            font-size: 0.9rem;
+        }
+
+        .leaflet-popup-content strong {
+            color: var(--color-accent);
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .popup-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background: rgba(56, 189, 248, 0.2);
+            border-radius: 10px;
+            font-size: 0.75rem;
+            color: var(--color-accent);
+            margin-top: 6px;
+        }
+
+        /* Metric Cards */
+        .metric-cards {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            display: flex;
+            gap: 12px;
+            z-index: 400;
+        }
+
+        .metric-card {
+            background: var(--color-surface);
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            min-width: 140px;
+        }
+
+        .metric-card-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-accent);
+            margin-bottom: 4px;
+        }
+
+        .metric-card-label {
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 320px;
+            }
+            .metric-cards {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .demo-container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: 50%;
+                border-right: none;
+                border-bottom: 2px solid var(--color-border);
+            }
+            .map-container {
+                height: 50%;
+            }
+            .map-legend {
+                bottom: 10px;
+                right: 10px;
+                font-size: 0.8rem;
+            }
+            .metric-cards {
+                top: 10px;
+                left: 10px;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Breadcrumb Navigation -->
+    <div style="position: absolute; top: 10px; left: 400px; z-index: 400; color: var(--color-text-muted); font-size: 0.85rem; padding: 8px 16px; background: var(--color-surface); border-radius: 20px; border: 1px solid var(--color-border);">
+        <a href="index.html" style="color: var(--color-accent); text-decoration: none;">🏠 Hub</a> → 
+        <a href="demo-intro.html" style="color: var(--color-accent); text-decoration: none;">Intro</a> → 
+        <span style="color: var(--color-text); font-weight: 600;">Emergency Demo</span> → 
+        <a href="enterprise-resilience-demo.html" style="color: var(--color-accent); text-decoration: none;">Enterprise Demo</a> → 
+        <a href="demo-summary.html" style="color: var(--color-accent); text-decoration: none;">Summary</a>
+    </div>
+
+    <!-- Emergency Alert Banner -->
+    <div class="alert-banner" id="alertBanner">
+        🚨 NETWORK OUTAGE DETECTED - All systems operating on offline mode
+    </div>
+
+    <div class="demo-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>🏟️ GrahmOS Emergency Response</h1>
+                <p>Interactive Demo - Large-Scale Venue Scenario</p>
+                <div class="nav-controls">
+                    <button class="nav-btn info-tooltip" id="backBtn" data-tooltip="Return to demo introduction" onclick="window.location.href='demo-intro.html'">← Intro</button>
+                    <button class="nav-btn info-tooltip" id="accordionToggle" data-tooltip="Toggle sidebar sections (Cmd+M)">☰ Menu</button>
+                    <button class="nav-btn info-tooltip" id="nextBtn" data-tooltip="See enterprise SaaS resilience demo" onclick="window.location.href='enterprise-resilience-demo.html'">Enterprise →</button>
+                    <button class="nav-btn info-tooltip" id="recordBtn" data-tooltip="Record demo walkthrough for training/review">● Record</button>
+                </div>
+            </div>
+
+            <!-- Network Status -->
+            <div class="network-status">
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText" style="font-size: 0.9rem;">Network: Online</span>
+                </div>
+                <button class="toggle-btn" id="toggleConnection">Outage</button>
+            </div>
+
+            <!-- Content Section -->
+            <div class="section-header" id="contentSectionHeader">
+                <div class="section-title">
+                    📄 CONTENT
+                </div>
+                <div class="section-toggle" id="contentToggle">▼</div>
+            </div>
+            <div class="section-content" id="contentSection">
+                <!-- Scenario Selector -->
+                <div class="scenario-selector">
+                    <h3>Emergency Scenarios</h3>
+                    <button class="scenario-btn active" data-scenario="medical">
+                        <span class="scenario-icon">🚑</span>
+                        <strong>Medical Emergency</strong>
+                        <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">
+                            Cardiac arrest - Section 214
+                        </div>
+                    </button>
+                    <button class="scenario-btn" data-scenario="evacuation">
+                        <span class="scenario-icon">🚪</span>
+                        <strong>Evacuation Protocol</strong>
+                        <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">
+                            Weather emergency - All exits
+                        </div>
+                    </button>
+                    <button class="scenario-btn" data-scenario="shelter">
+                        <span class="scenario-icon">🛡️</span>
+                        <strong>Shelter-in-Place</strong>
+                        <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">
+                            Security threat - Safe zones
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Directory Quick Access -->
+                <div class="directory-access">
+                    <h3>📁 Quick Access (Offline)</h3>
+                <div class="directory-item" data-doc="medical">
+                    <strong>🏥 Medical Protocols</strong>
+                    /medical/emergency/cardiac_arrest.pdf
+                </div>
+                <div class="directory-item" data-doc="evacuation">
+                    <strong>🚪 Evacuation Routes</strong>
+                    /emergency/evacuation/all_exits.pdf
+                </div>
+                <div class="directory-item" data-doc="equipment">
+                    <strong>⚡ AED Locations</strong>
+                    /medical/equipment/aed_stations.pdf
+                </div>
+                <div class="directory-item" data-doc="contacts">
+                    <strong>📞 Emergency Contacts</strong>
+                    /emergency/contacts/response_team.pdf
+                </div>
+                <div class="directory-item" data-doc="shelter">
+                    <strong>🛡️ Safe Zones</strong>
+                    /emergency/shelter/secure_locations.pdf
+                </div>
+                <div class="directory-item" data-doc="transport">
+                    <strong>🚑 Ambulance Routes</strong>
+                    /transport/emergency/access_roads.pdf
+                </div>
+                </div>
+            </div>
+
+            <!-- Components Section -->
+            <div class="components-section">
+                <div class="section-header" id="componentsSectionHeader">
+                    <div class="section-title">
+                        🔧 COMPONENTS
+                    </div>
+                    <div class="section-toggle" id="componentsToggle">▼</div>
+                </div>
+                <div class="section-content" id="componentsSection">
+                    <!-- AI Assistant Panel -->
+                    <div class="ai-panel">
+                <h3>🤖 AI Assistant</h3>
+                    <div class="ai-status" id="aiStatus">
+                        <div>Status: <strong style="color: var(--color-success);">Active (Online)</strong></div>
+                        <div style="margin-top: 8px; color: var(--color-text-muted);">
+                            Edge AI running locally - providing real-time guidance for emergency response.
+                        </div>
+                        <div class="ai-badge">✓ 100% Uptime Guaranteed</div>
+                    </div>
+                    </div>
+
+                    <!-- Chat Simulation -->
+                    <div class="chat-simulation">
+                        <h3>💬 Chat Assistant</h3>
+                        <div class="chat-options">
+                            <button class="chat-option-btn" onclick="handleChatAction('nearest-aed')">
+                                📍 Where is the nearest AED?
+                            </button>
+                            <button class="chat-option-btn" onclick="handleChatAction('evac-time')">
+                                ⏱️ How long to evacuate?
+                            </button>
+                            <button class="chat-option-btn" onclick="handleChatAction('contact-team')">
+                                📞 Contact emergency team
+                            </button>
+                            <button class="chat-option-btn" onclick="handleChatAction('crowd-density')">
+                                👥 Show crowd density
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Emergency Location Sharing -->
+                    <div class="location-sharing" style="padding: 20px; border-top: 1px solid var(--color-border);">
+                        <h3 style="color: var(--color-accent); margin-bottom: 12px; font-size: 1rem; display: flex; align-items: center; gap: 8px;">📍 Emergency Location</h3>
+                        <button class="chat-option-btn info-tooltip" id="shareLocationBtn" data-tooltip="Broadcast your location to emergency responders" onclick="toggleLocationSharing()" style="background: rgba(239, 68, 68, 0.1); border-color: var(--color-error);">
+                            📍 Share My Location
+                        </button>
+                        <div id="locationStatus" style="margin-top: 8px; font-size: 0.8rem; color: var(--color-text-muted); display: none;">
+                            <div id="locationStatusText" style="color: var(--color-success);">✓ Location shared with emergency team</div>
+                            <div style="margin-top: 4px;">Section 214, Row 18, Seat 12</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Container -->
+        <div class="map-container">
+            <!-- Metric Cards -->
+            <div class="metric-cards">
+                <div class="metric-card">
+                    <div class="metric-card-value" id="capacityMetric">82,500</div>
+                    <div class="metric-card-label">Stadium Capacity</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-card-value" id="responseMetric">0.3s</div>
+                    <div class="metric-card-label">Response Time</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-card-value" id="uptimeMetric">100%</div>
+                    <div class="metric-card-label">Offline Uptime</div>
+                </div>
+            </div>
+
+            <!-- Leaflet Map -->
+            <div id="map"></div>
+
+            <!-- Map Legend -->
+            <div class="map-legend">
+                <h4>Map Legend</h4>
+                <div class="legend-item">
+                    <div class="legend-marker medical"></div>
+                    <span>Medical Stations</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-marker exit"></div>
+                    <span>Emergency Exits</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-marker shelter"></div>
+                    <span>Safe Zones</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-marker route"></div>
+                    <span>Evacuation Routes</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let currentScenario = 'medical';
+        let markers = [];
+        let routes = [];
+        let isRecording = false;
+        let recordingStartTime = null;
+        let recordedActions = [];
+        let userLocationMarker = null;
+        let locationShared = false;
+        let connectionMode = 'online'; // 'online' | 'offline' | 'syncing' - unified state management
+        
+        // Helper to check if online (unified with connectionMode)
+        function isOnline() {
+            return connectionMode === 'online' || connectionMode === 'syncing';
+        }
+
+        function initMap() {
+            map = L.map('map').setView([40.8128, -74.0742], 16);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+            loadScenario('medical');
+        }
+
+        document.getElementById('toggleConnection').addEventListener('click', function() {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const alertBanner = document.getElementById('alertBanner');
+            const btn = this;
+
+            if (connectionMode === 'offline') {
+                // OFFLINE → SYNCING → ONLINE
+                logRecordedAction('Network Toggle', 'Restoring connection from OFFLINE to ONLINE');
+                connectionMode = 'syncing';
+
+                statusDot.classList.remove('offline');
+                statusText.textContent = 'Network: Syncing...';
+                btn.textContent = 'Syncing...';
+                btn.disabled = true;
+                alertBanner.classList.remove('active');
+                document.getElementById('aiStatus').innerHTML = `
+                    <div>Status: <strong style="color: var(--color-warning);">Syncing to Cloud...</strong></div>
+                    <div style="margin-top: 8px; color: var(--color-text-muted);">
+                        Restoring connection. Syncing local data to cloud servers.
+                    </div>
+                    <div class="ai-badge" style="background: rgba(234, 179, 8, 0.2); color: var(--color-warning);">Sync in Progress</div>
+                `;
+
+                setTimeout(() => {
+                    connectionMode = 'online';
+                    statusText.textContent = 'Network: Online';
+                    btn.textContent = 'Outage';
+                    btn.disabled = false;
+                    document.getElementById('aiStatus').innerHTML = `
+                        <div>Status: <strong style="color: var(--color-success);">Active (Online) - Synced</strong></div>
+                        <div style="margin-top: 8px; color: var(--color-text-muted);">
+                            Cloud sync complete. Edge AI running locally with cloud backup active.
+                        </div>
+                        <div class="ai-badge">✓ 100% Uptime Guaranteed</div>
+                    `;
+                    updateMetrics(currentScenario); // Update metrics after state change
+                }, 1500);
+            } else {
+                // ONLINE → OFFLINE
+                logRecordedAction('Network Toggle', 'Simulating network OUTAGE - switching to offline mode');
+                connectionMode = 'offline';
+
+                statusDot.classList.add('offline');
+                statusText.textContent = 'Network: OFFLINE';
+                btn.textContent = 'Restore';
+                alertBanner.classList.add('active');
+                document.getElementById('aiStatus').innerHTML = `
+                    <div>Status: <strong style="color: var(--color-warning);">Offline Mode - Edge AI Active</strong></div>
+                    <div style="margin-top: 8px; color: var(--color-text-muted);">
+                        Network failure detected. All AI operations running on local devices. Zero functionality loss.
+                    </div>
+                    <div class="ai-badge">✓ 100% Operational</div>
+                `;
+                updateMetrics(currentScenario); // Update metrics after state change
+            }
+        });
+
+        function clearMap() {
+            markers.forEach(marker => map.removeLayer(marker));
+            routes.forEach(route => map.removeLayer(route));
+            markers = [];
+            routes = [];
+            // Preserve user location marker across scenario changes
+            if (userLocationMarker && locationShared) {
+                map.addLayer(userLocationMarker);
+            }
+        }
+
+        function loadScenario(scenario) {
+            const scenarioNames = { medical: 'Medical Emergency', evacuation: 'Evacuation Protocol', shelter: 'Shelter-in-Place' };
+            logRecordedAction('Scenario Change', `Switched to ${scenarioNames[scenario] || scenario}`);
+            
+            currentScenario = scenario;
+            clearMap();
+            
+            // Show loading state
+            document.querySelectorAll('.scenario-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+            });
+            
+            document.querySelectorAll('.scenario-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.scenario === scenario) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Update metric cards dynamically
+            updateMetrics(scenario);
+
+            if (scenario === 'medical') {
+                loadMedicalScenario();
+            } else if (scenario === 'evacuation') {
+                loadEvacuationScenario();
+            } else if (scenario === 'shelter') {
+                loadShelterScenario();
+            }
+            
+            // Re-enable buttons after load
+            setTimeout(() => {
+                document.querySelectorAll('.scenario-btn').forEach(btn => {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                });
+            }, 300);
+            
+            // Store scenario data in IndexedDB after loading
+            setTimeout(() => {
+                if (db && markers.length > 0) {
+                    storeRouteData(scenario, routes, markers);
+                }
+            }, 500);
+        }
+
+        function loadMedicalScenario() {
+            const emergencyIcon = L.divIcon({
+                className: 'custom-icon',
+                html: '<div style="background: #ef4444; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white;"></div>',
+                iconSize: [20, 20]
+            });
+            const emergency = L.marker([40.8135, -74.0750], { icon: emergencyIcon }).addTo(map);
+            const sourceLabel = connectionMode === 'offline' ? 'Cached Offline' : 'Cloud + Edge';
+            emergency.bindPopup(`<strong>🚨 Medical Emergency</strong><br>Section 214 - Cardiac Arrest<br><span class="popup-badge">${sourceLabel}</span>`);
+            markers.push(emergency);
+
+            const medicalStations = [
+                { pos: [40.8140, -74.0735], name: 'Medical Station North', staff: '3 EMTs', aed: 'Available' },
+                { pos: [40.8120, -74.0745], name: 'Medical Station South', staff: '2 EMTs', aed: 'Available' },
+                { pos: [40.8125, -74.0760], name: 'Medical Station West', staff: '4 EMTs + Physician', aed: 'Available' }
+            ];
+
+            medicalStations.forEach(station => {
+                const marker = L.circleMarker(station.pos, {
+                    radius: 8,
+                    fillColor: '#ef4444',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                marker.bindPopup(`<strong>🏥 ${station.name}</strong><br>Staff: ${station.staff}<br>AED: ${station.aed}<br>Distance: ${Math.floor(Math.random() * 100 + 50)}m<br><span class="popup-badge">Ready - ${(Math.random() * 2 + 1).toFixed(1)} min ETA</span>`);
+                markers.push(marker);
+            });
+
+            // Connect emergency to each medical station
+            const emergencyLocation = [40.8135, -74.0750];
+            medicalStations.forEach(station => {
+                const connector = L.polyline([emergencyLocation, station.pos], { color: '#ef4444', weight: 3, opacity: 0.6, dashArray: '8, 6' }).addTo(map);
+                routes.push(connector);
+            });
+
+            // Main ambulance route
+            const ambulanceRoute = [[40.8125, -74.0760], [40.8130, -74.0755], [40.8135, -74.0750]];
+            const route = L.polyline(ambulanceRoute, { color: '#ef4444', weight: 4, opacity: 0.7, dashArray: '10, 10' }).addTo(map);
+            routes.push(route);
+            map.setView([40.8128, -74.0745], 17);
+        }
+
+        function loadEvacuationScenario() {
+            const exits = [
+                { pos: [40.8145, -74.0730], name: 'Gate A - Main Exit', capacity: '15,000', status: 'Clear' },
+                { pos: [40.8110, -74.0730], name: 'Gate B - South Exit', capacity: '12,000', status: 'Clear' },
+                { pos: [40.8128, -74.0770], name: 'Gate C - West Exit', capacity: '18,000', status: 'Clear' },
+                { pos: [40.8145, -74.0755], name: 'Gate D - North Exit', capacity: '10,000', status: 'Clear' }
+            ];
+
+            exits.forEach(exit => {
+                const marker = L.circleMarker(exit.pos, {
+                    radius: 10,
+                    fillColor: '#22c55e',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                marker.bindPopup(`<strong>🚪 ${exit.name}</strong><br>Capacity: ${exit.capacity} people/hr<br>Status: <span style="color: #22c55e;">${exit.status}</span><br><span class="popup-badge">Evacuation Time: ~${Math.floor(Math.random() * 10 + 15)} min</span>`);
+                markers.push(marker);
+            });
+
+            const center = [40.8128, -74.0742];
+            exits.forEach(exit => {
+                const route = L.polyline([center, exit.pos], { color: '#38bdf8', weight: 3, opacity: 0.6 }).addTo(map);
+                routes.push(route);
+            });
+            map.setView([40.8128, -74.0742], 16);
+        }
+
+        function loadShelterScenario() {
+            const safeZones = [
+                { pos: [40.8140, -74.0740], name: 'Conference Room A', capacity: '500', security: 'Secured' },
+                { pos: [40.8120, -74.0740], name: 'Press Box Level', capacity: '300', security: 'Secured' },
+                { pos: [40.8128, -74.0755], name: 'Underground Tunnel', capacity: '1,200', security: 'Secured' },
+                { pos: [40.8135, -74.0730], name: 'VIP Suites Wing', capacity: '400', security: 'Secured' }
+            ];
+
+            safeZones.forEach(zone => {
+                const marker = L.circleMarker(zone.pos, {
+                    radius: 12,
+                    fillColor: '#eab308',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                marker.bindPopup(`<strong>🛡️ ${zone.name}</strong><br>Capacity: ${zone.capacity} people<br>Security: <span style="color: #22c55e;">${zone.security}</span><br>Available: ${Math.floor(Math.random() * 100 + 200)} spaces<br><span class="popup-badge">Safe Zone - Climate Controlled</span>`);
+                markers.push(marker);
+            });
+            map.setView([40.8128, -74.0742], 16.5);
+        }
+
+        document.querySelectorAll('.scenario-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                loadScenario(this.dataset.scenario);
+            });
+        });
+
+        // Recording toggle with functional session recording
+        document.getElementById('recordBtn').addEventListener('click', function() {
+            isRecording = !isRecording;
+            this.textContent = isRecording ? '■ Stop' : '● Record';
+            this.classList.toggle('recording', isRecording);
+            
+            if (isRecording) {
+                // Start recording
+                recordingStartTime = Date.now();
+                recordedActions = [];
+                logRecordedAction('Recording Started', `Session initiated at ${new Date().toLocaleTimeString()}`);
+                showTooltip('📹 Recording demo session - All actions will be logged', 2000);
+                console.log('%c📹 Recording Started', 'color: #ef4444; font-weight: bold;');
+            } else {
+                // Stop recording and show summary
+                const duration = ((Date.now() - recordingStartTime) / 1000).toFixed(1);
+                logRecordedAction('Recording Stopped', `Duration: ${duration}s, Actions: ${recordedActions.length}`);
+                showRecordingSummary(duration);
+                console.log('%c■ Recording Stopped', 'color: #ef4444; font-weight: bold;');
+                console.log(`📊 Session Summary: ${recordedActions.length} actions in ${duration}s`);
+                console.table(recordedActions);
+            }
+        });
+        
+        function logRecordedAction(action, details) {
+            if (isRecording) {
+                const timestamp = ((Date.now() - recordingStartTime) / 1000).toFixed(1);
+                recordedActions.push({
+                    time: `${timestamp}s`,
+                    action: action,
+                    details: details,
+                    scenario: currentScenario,
+                    networkMode: connectionMode
+                });
+                console.log(`[${timestamp}s] ${action}: ${details}`);
+            }
+        }
+        
+        function showRecordingSummary(duration) {
+            const summary = `📹 Recording Session Complete\n\n` +
+                `Duration: ${duration} seconds\n` +
+                `Actions Recorded: ${recordedActions.length}\n` +
+                `Network Mode: ${connectionMode}\n\n` +
+                `Actions:\n${recordedActions.map((a, i) => `${i + 1}. [${a.time}] ${a.action}`).join('\n')}\n\n` +
+                `Full details available in browser console (F12)`;
+            alert(summary);
+        }
+
+        function getNetworkLabel() {
+            if (connectionMode === 'offline') return 'OFFLINE MODE - using local cache and edge AI';
+            if (connectionMode === 'syncing') return 'SYNCING - using local data while cloud updates';
+            return 'ONLINE MODE - edge AI + cloud sync active';
+        }
+
+        function updateMetrics(scenario) {
+            const responseMetric = document.getElementById('responseMetric');
+            const uptimeMetric = document.getElementById('uptimeMetric');
+            
+            // Update response time based on scenario
+            const responseTimes = {
+                medical: '0.3s',
+                evacuation: '0.5s',
+                shelter: '0.4s'
+            };
+            
+            responseMetric.textContent = responseTimes[scenario] || '0.3s';
+            
+            // Update uptime based on connection mode
+            if (connectionMode === 'offline') {
+                uptimeMetric.textContent = '100%';
+                uptimeMetric.style.color = 'var(--color-success)';
+            } else if (connectionMode === 'syncing') {
+                uptimeMetric.textContent = '99.9%';
+                uptimeMetric.style.color = 'var(--color-warning)';
+            } else {
+                uptimeMetric.textContent = '100%';
+                uptimeMetric.style.color = 'var(--color-accent)';
+            }
+        }
+
+        function showTooltip(message, duration = 3000) {
+            // Remove existing tooltip
+            const existing = document.getElementById('actionTooltip');
+            if (existing) existing.remove();
+
+            // Error handling: check if map container exists
+            const mapContainer = document.querySelector('.map-container');
+            if (!mapContainer) {
+                console.warn('[Tooltip] Map container not found');
+                return;
+            }
+
+            // Create tooltip
+            const tooltip = document.createElement('div');
+            tooltip.id = 'actionTooltip';
+            tooltip.style.cssText = `
+                position: absolute;
+                top: 120px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, var(--color-surface), #1e293b);
+                color: var(--color-text);
+                padding: 16px 24px;
+                border-radius: 12px;
+                border: 2px solid var(--color-accent);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+                z-index: 1000;
+                font-size: 0.9rem;
+                max-width: 400px;
+                animation: slideIn 0.3s ease;
+            `;
+            tooltip.innerHTML = `<strong style="color: var(--color-accent);">🤖 AI Action:</strong> ${message}`;
+            mapContainer.appendChild(tooltip);
+
+            // Auto-remove after duration
+            setTimeout(() => {
+                tooltip.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => tooltip.remove(), 300);
+            }, duration);
+        }
+
+        function handleChatAction(action) {
+            let message = '';
+
+            if (action === 'nearest-aed') {
+                logRecordedAction('Chat Action', 'Asked: Where is the nearest AED?');
+                // Execute action: Switch to medical scenario
+                if (currentScenario !== 'medical') {
+                    loadScenario('medical');
+                }
+                message = 'Located nearest AED at Medical Station North - 90m away, 1.2 min ETA';
+                
+                // Highlight the nearest medical station
+                setTimeout(() => {
+                    if (markers.length > 1) {
+                        markers[1].openPopup();
+                    }
+                }, 500);
+            } else if (action === 'evac-time') {
+                logRecordedAction('Chat Action', 'Asked: How long to evacuate?');
+                // Execute action: Switch to evacuation scenario
+                if (currentScenario !== 'evacuation') {
+                    loadScenario('evacuation');
+                }
+                message = 'Calculating evacuation routes - Full stadium evacuation: 12-18 minutes via Gates A, B, C, D';
+            } else if (action === 'contact-team') {
+                logRecordedAction('Chat Action', 'Requested: Emergency team contacts');
+                // Execute action: Show contact info in console (no scenario change)
+                message = 'Emergency contacts loaded - Incident Commander, Medical Lead, Security Lead, Operations';
+                console.log('📞 Emergency Response Team Contacts:');
+                console.log('- Incident Commander: +1 (555) 100-0001');
+                console.log('- Medical Lead: +1 (555) 100-0002');
+                console.log('- Security Lead: +1 (555) 100-0003');
+                console.log('- Operations Control Room: +1 (555) 100-0004');
+            } else if (action === 'crowd-density') {
+                logRecordedAction('Chat Action', 'Requested: Show crowd density');
+                // Execute action: Switch to shelter scenario
+                if (currentScenario !== 'shelter') {
+                    loadScenario('shelter');
+                }
+                message = 'Analyzing crowd density - Prioritizing safe zones with available capacity';
+            }
+
+            // Show tooltip annotation
+            showTooltip(message);
+        }
+
+        function toggleLocationSharing() {
+            const btn = document.getElementById('shareLocationBtn');
+            const status = document.getElementById('locationStatus');
+            
+            if (!locationShared) {
+                // Share location - simulate user position in stadium
+                const userLocation = [40.8128, -74.0748]; // Section 214 area
+                
+                // Create custom user location icon
+                const userIcon = L.divIcon({
+                    className: 'user-location-icon',
+                    html: `<div style="
+                        background: linear-gradient(135deg, #3b82f6, #2563eb);
+                        width: 24px;
+                        height: 24px;
+                        border-radius: 50%;
+                        border: 4px solid white;
+                        box-shadow: 0 0 16px rgba(59, 130, 246, 0.6), 0 0 0 8px rgba(59, 130, 246, 0.2);
+                        animation: locationPulse 2s infinite;
+                    "></div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+                
+                // Add marker to map
+                userLocationMarker = L.marker(userLocation, { icon: userIcon }).addTo(map);
+                const shareStatus = connectionMode === 'offline' 
+                    ? 'Cached Locally - Will sync when online' 
+                    : 'Shared with Emergency Team';
+                const badgeColor = connectionMode === 'offline' ? '#eab308' : '#3b82f6';
+                userLocationMarker.bindPopup(`
+                    <strong style="color: #3b82f6;">📍 Your Location</strong><br>
+                    Section 214, Row 18, Seat 12<br>
+                    <span class="popup-badge" style="background: rgba(59, 130, 246, 0.2); color: ${badgeColor};">${shareStatus}</span>
+                `);
+                userLocationMarker.openPopup();
+                
+                // Update UI
+                locationShared = true;
+                btn.innerHTML = '✓ Location Shared';
+                btn.style.background = 'rgba(34, 197, 94, 0.2)';
+                btn.style.borderColor = 'var(--color-success)';
+                btn.setAttribute('data-tooltip', 'Stop sharing location');
+                status.style.display = 'block';
+                
+                const statusText = document.getElementById('locationStatusText');
+                if (connectionMode === 'offline') {
+                    statusText.style.color = 'var(--color-warning)';
+                    statusText.innerHTML = '⚠️ Location cached locally (offline)';
+                } else {
+                    statusText.style.color = 'var(--color-success)';
+                    statusText.innerHTML = '✓ Location shared with emergency team';
+                }
+                
+                // Log action
+                const logMessage = connectionMode === 'offline' 
+                    ? 'Location cached locally (offline mode) - Section 214'
+                    : 'User location broadcasted to emergency responders - Section 214';
+                logRecordedAction('Location Sharing', logMessage);
+                
+                // Show tooltip
+                const tooltipMessage = connectionMode === 'offline'
+                    ? '📍 Location cached - Will broadcast when connection restored'
+                    : '📍 Location shared successfully - Emergency team notified';
+                showTooltip(tooltipMessage, 2500);
+                
+                console.log('%c📍 Location Shared', 'color: #3b82f6; font-weight: bold;');
+                console.log('Coordinates:', userLocation);
+                console.log('Section: 214, Row: 18, Seat: 12');
+                console.log('Network Mode:', connectionMode);
+            } else {
+                // Stop sharing location
+                if (userLocationMarker) {
+                    map.removeLayer(userLocationMarker);
+                    userLocationMarker = null;
+                }
+                
+                // Update UI
+                locationShared = false;
+                btn.innerHTML = '📍 Share My Location';
+                btn.style.background = 'rgba(239, 68, 68, 0.1)';
+                btn.style.borderColor = 'var(--color-error)';
+                btn.setAttribute('data-tooltip', 'Broadcast your location to emergency responders');
+                status.style.display = 'none';
+                
+                // Log action
+                logRecordedAction('Location Sharing', 'Location sharing stopped');
+                
+                // Show tooltip
+                showTooltip('📍 Location sharing stopped', 2000);
+                
+                console.log('%c📍 Location Sharing Stopped', 'color: #6b7280; font-weight: bold;');
+            }
+        }
+
+        document.querySelectorAll('.directory-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const type = this.dataset.doc;
+                const docs = {
+                    medical: { title: 'Cardiac Arrest Response Protocol', content: 'AED locations, CPR procedures, emergency contact protocols for medical staff.', path: '/medical/emergency/cardiac_arrest.pdf' },
+                    evacuation: { title: 'Stadium Evacuation Map', content: 'All emergency exits, capacity ratings, estimated evacuation times by section.', path: '/emergency/evacuation/all_exits.pdf' },
+                    equipment: { title: 'AED Station Locations', content: 'Automated External Defibrillator locations with step-by-step usage instructions.', path: '/medical/equipment/aed_stations.pdf' },
+                    contacts: { title: 'Emergency Response Team', content: 'Direct contacts for medical, security, fire, and management personnel.', path: '/emergency/contacts/response_team.pdf' },
+                    shelter: { title: 'Secure Location Directory', content: 'Climate-controlled safe zones with capacity and security access details.', path: '/emergency/shelter/secure_locations.pdf' },
+                    transport: { title: 'Emergency Vehicle Access', content: 'Ambulance routes, fire department access roads, helicopter landing zones.', path: '/transport/emergency/access_roads.pdf' }
+                };
+                const doc = docs[type];
+                if (doc) {
+                    alert(`📄 ${doc.title}\n\nPath: ${doc.path}\n\n${doc.content}\n\n${isOnline() ? '✓ Loaded from cloud storage' : '✓ Loaded from local cache (OFFLINE MODE)'}\n\nAI Summary: Available instantly via edge processing`);
+                }
+            });
+        });
+
+        // IndexedDB for offline route storage
+        const DB_NAME = 'grahmos-emergency-routes';
+        const DB_VERSION = 1;
+        let db;
+
+        function initIndexedDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    db = request.result;
+                    console.log('[IndexedDB] Database opened');
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    
+                    // Create object stores
+                    if (!db.objectStoreNames.contains('routes')) {
+                        const routeStore = db.createObjectStore('routes', { keyPath: 'id' });
+                        routeStore.createIndex('scenario', 'scenario', { unique: false });
+                        console.log('[IndexedDB] Routes store created');
+                    }
+                    
+                    if (!db.objectStoreNames.contains('markers')) {
+                        const markerStore = db.createObjectStore('markers', { keyPath: 'id' });
+                        markerStore.createIndex('scenario', 'scenario', { unique: false });
+                        console.log('[IndexedDB] Markers store created');
+                    }
+                };
+            });
+        }
+
+        // Store route data offline
+        function storeRouteData(scenario, routeData, markerData) {
+            if (!db) return;
+            
+            const transaction = db.transaction(['routes', 'markers'], 'readwrite');
+            const routeStore = transaction.objectStore('routes');
+            const markerStore = transaction.objectStore('markers');
+            
+            routeStore.put({
+                id: scenario,
+                scenario: scenario,
+                data: routeData,
+                timestamp: Date.now()
+            });
+            
+            markerStore.put({
+                id: scenario,
+                scenario: scenario,
+                data: markerData,
+                timestamp: Date.now()
+            });
+            
+            console.log(`[IndexedDB] Stored ${scenario} route data offline`);
+        }
+
+        // Removed unused loadRouteData function - data is loaded directly from scenario functions
+
+        // Hamburger menu: collapse/expand all sidebar sections
+        function setupAccordionToggles() {
+            let sectionsCollapsed = false;
+            const menuBtn = document.getElementById('accordionToggle');
+
+            // Hamburger menu click and keyboard handler
+            const handleMenuToggle = function() {
+                sectionsCollapsed = !sectionsCollapsed;
+                const contentSection = document.getElementById('contentSection');
+                const contentToggle = document.getElementById('contentToggle');
+                const componentsSection = document.getElementById('componentsSection');
+                const componentsToggle = document.getElementById('componentsToggle');
+
+                if (sectionsCollapsed) {
+                    contentSection.classList.add('collapsed');
+                    contentToggle.classList.add('collapsed');
+                    componentsSection.classList.add('collapsed');
+                    componentsToggle.classList.add('collapsed');
+                } else {
+                    contentSection.classList.remove('collapsed');
+                    contentToggle.classList.remove('collapsed');
+                    componentsSection.classList.remove('collapsed');
+                    componentsToggle.classList.remove('collapsed');
+                }
+            };
+            
+            menuBtn.addEventListener('click', handleMenuToggle);
+            menuBtn.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleMenuToggle();
+                }
+            });
+            
+            // Content section toggle with keyboard support
+            const handleContentToggle = function() {
+                const contentSection = document.getElementById('contentSection');
+                const contentToggle = document.getElementById('contentToggle');
+                const componentsSection = document.getElementById('componentsSection');
+                const componentsToggle = document.getElementById('componentsToggle');
+                
+                const isContentCollapsed = contentSection.classList.contains('collapsed');
+                
+                // When expanding content, collapse components to allow only one open
+                if (isContentCollapsed) {
+                    componentsSection.classList.add('collapsed');
+                    componentsToggle.classList.add('collapsed');
+                }
+                
+                contentSection.classList.toggle('collapsed');
+                contentToggle.classList.toggle('collapsed');
+            };
+            
+            const contentHeader = document.getElementById('contentSectionHeader');
+            contentHeader.addEventListener('click', handleContentToggle);
+            contentHeader.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleContentToggle();
+                }
+            });
+            contentHeader.setAttribute('tabindex', '0');
+            contentHeader.setAttribute('role', 'button');
+            contentHeader.setAttribute('aria-expanded', 'true');
+            
+            // Components section toggle with keyboard support
+            const handleComponentsToggle = function() {
+                const contentSection = document.getElementById('contentSection');
+                const contentToggle = document.getElementById('contentToggle');
+                const componentsSection = document.getElementById('componentsSection');
+                const componentsToggle = document.getElementById('componentsToggle');
+                
+                const isComponentsCollapsed = componentsSection.classList.contains('collapsed');
+                
+                // When expanding components, collapse content to allow only one open
+                if (isComponentsCollapsed) {
+                    contentSection.classList.add('collapsed');
+                    contentToggle.classList.add('collapsed');
+                }
+                
+                componentsSection.classList.toggle('collapsed');
+                componentsToggle.classList.toggle('collapsed');
+            };
+            
+            const componentsHeader = document.getElementById('componentsSectionHeader');
+            componentsHeader.addEventListener('click', handleComponentsToggle);
+            componentsHeader.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleComponentsToggle();
+                }
+            });
+            componentsHeader.setAttribute('tabindex', '0');
+            componentsHeader.setAttribute('role', 'button');
+            componentsHeader.setAttribute('aria-expanded', 'true');
+        }
+
+        window.addEventListener('load', function() {
+            setupAccordionToggles();
+            // Initialize IndexedDB
+            initIndexedDB().then(() => {
+                console.log('[IndexedDB] Ready for offline storage');
+                
+                // Initialize map
+                initMap();
+                
+                // Store initial scenario data after map loads
+                setTimeout(() => {
+                    if (markers.length > 0) {
+                        storeRouteData('medical', routes, markers);
+                        console.log('[IndexedDB] Initial scenario data stored');
+                    }
+                }, 2000);
+            }).catch(error => {
+                console.error('[IndexedDB] Initialization failed:', error);
+                initMap(); // Still initialize map even if IndexedDB fails
+            });
+            
+            // Register Service Worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('[Service Worker] Registered:', registration.scope);
+                        
+                        // Update offline status indicator when SW is activated
+                        registration.addEventListener('updatefound', () => {
+                            console.log('[Service Worker] Update found');
+                        });
+                    })
+                    .catch(error => {
+                        console.warn('[Service Worker] Registration failed (optional feature):', error.message);
+                    });
+                
+                // Listen for SW messages
+                navigator.serviceWorker.addEventListener('message', event => {
+                    if (event.data.type === 'CACHE_UPDATED') {
+                        console.log('[Service Worker] Cache updated');
+                    }
+                });
+            }
+            
+            console.log('%c🏟️ GrahmOS Stadium Demo Ready', 'color: #38bdf8; font-size: 16px; font-weight: bold;');
+            console.log('%c✓ Service Worker: Caching map tiles', 'color: #22c55e; font-size: 12px;');
+            console.log('%c✓ IndexedDB: Offline route storage active', 'color: #22c55e; font-size: 12px;');
+            console.log('%cClick "Outage" to simulate network failure - watch AI continue working!', 'color: #94a3b8; font-size: 12px;');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GrahmOS - Enterprise SaaS Resilience Demo</title>
+    <style>
+        :root {
+            --color-bg-dark: #0f172a;
+            --color-surface: #1e293b;
+            --color-accent: #38bdf8;
+            --color-accent-hover: #0ea5e9;
+            --color-text: #f1f5f9;
+            --color-text-muted: #94a3b8;
+            --color-success: #22c55e;
+            --color-warning: #eab308;
+            --color-error: #ef4444;
+            --color-border: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--color-bg-dark);
+            color: var(--color-text);
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .demo-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Header */
+        .demo-header {
+            background: linear-gradient(135deg, var(--color-surface), #0f172a);
+            border-bottom: 2px solid var(--color-accent);
+            padding: 20px;
+            position: relative;
+            z-index: 100;
+        }
+
+        .demo-header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+            background: linear-gradient(135deg, var(--color-accent), #0ea5e9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .demo-header p {
+            color: var(--color-text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            color: var(--color-text-muted);
+            font-size: 0.85rem;
+        }
+
+        .breadcrumb a {
+            color: var(--color-accent);
+            text-decoration: none;
+        }
+
+        /* Split Screen Layout */
+        .split-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+            flex: 1;
+            background: var(--color-border);
+        }
+
+        .split-panel {
+            background: var(--color-bg-dark);
+            padding: 30px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .split-panel.failed {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(220, 38, 38, 0.02));
+        }
+
+        .split-panel.success {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(22, 163, 74, 0.02));
+        }
+
+        .panel-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .panel-header h2 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .panel-header.failed h2 {
+            color: var(--color-error);
+        }
+
+        .panel-header.success h2 {
+            color: var(--color-success);
+        }
+
+        .panel-header p {
+            color: var(--color-text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* System Status */
+        .system-status {
+            background: var(--color-surface);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 2px solid var(--color-border);
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-badge.offline {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--color-error);
+        }
+
+        .status-badge.online {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--color-success);
+        }
+
+        .status-badge.degraded {
+            background: rgba(234, 179, 8, 0.2);
+            color: var(--color-warning);
+        }
+
+        /* Service Cards */
+        .service-grid {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .service-card {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 10px;
+            padding: 18px;
+            border-left: 4px solid var(--color-border);
+            transition: all 0.3s ease;
+        }
+
+        .service-card.failed {
+            border-left-color: var(--color-error);
+            animation: shake 0.5s ease;
+        }
+
+        .service-card.success {
+            border-left-color: var(--color-success);
+        }
+
+        .service-card.recovering {
+            border-left-color: var(--color-warning);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .service-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .service-name {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .service-status {
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        .service-status.failed {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--color-error);
+        }
+
+        .service-status.online {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--color-success);
+        }
+
+        .service-details {
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+            margin-top: 8px;
+        }
+
+        /* Network Mesh Visualization */
+        .mesh-visualization {
+            background: var(--color-surface);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 2px solid var(--color-border);
+            min-height: 300px;
+            position: relative;
+        }
+
+        .mesh-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--color-accent);
+        }
+
+        .mesh-canvas {
+            position: relative;
+            height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .node {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 3px solid;
+            transition: all 0.3s ease;
+        }
+
+        .node.aws {
+            background: #FF9900;
+            border-color: #FF9900;
+            color: white;
+        }
+
+        .node.aws.failed {
+            background: var(--color-error);
+            border-color: var(--color-error);
+            animation: nodeFail 0.5s ease;
+            opacity: 0.3;
+        }
+
+        .node.p2p {
+            background: var(--color-accent);
+            border-color: var(--color-accent);
+            color: var(--color-bg-dark);
+        }
+
+        .node.p2p.active {
+            animation: nodeActive 2s infinite;
+        }
+
+        @keyframes nodeFail {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(0.9); }
+        }
+
+        @keyframes nodeActive {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); }
+            50% { box-shadow: 0 0 0 15px rgba(56, 189, 248, 0); }
+        }
+
+        .connection-line {
+            position: absolute;
+            height: 2px;
+            background: var(--color-border);
+            transform-origin: left center;
+            transition: all 0.3s ease;
+        }
+
+        .connection-line.active {
+            background: var(--color-accent);
+            box-shadow: 0 0 10px var(--color-accent);
+        }
+
+        .connection-line.failed {
+            background: var(--color-error);
+            opacity: 0.2;
+        }
+
+        /* Agent Activity Feed */
+        .agent-feed {
+            background: var(--color-surface);
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid var(--color-border);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .agent-feed-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--color-accent);
+        }
+
+        .agent-log {
+            font-size: 0.8rem;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 6px;
+            border-left: 3px solid;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .agent-log.success {
+            border-left-color: var(--color-success);
+        }
+
+        .agent-log.warning {
+            border-left-color: var(--color-warning);
+        }
+
+        .agent-log.error {
+            border-left-color: var(--color-error);
+        }
+
+        .log-timestamp {
+            color: var(--color-text-muted);
+            font-size: 0.75rem;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            background: var(--color-surface);
+            border-top: 2px solid var(--color-border);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .control-btn {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, var(--color-accent), #0ea5e9);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(56, 189, 248, 0.4);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .control-btn.danger {
+            background: linear-gradient(135deg, var(--color-error), #dc2626);
+        }
+
+        .control-btn.success {
+            background: linear-gradient(135deg, var(--color-success), #16a34a);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .split-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <!-- Header -->
+        <div class="demo-header">
+            <div class="breadcrumb">
+                <a href="index.html">🏠 Hub</a> → 
+                <a href="demo-intro.html">Intro</a> → 
+                <a href="emergency-maps-v2.html">Emergency Demo</a> → 
+                <span style="color: var(--color-text); font-weight: 600;">Enterprise Demo</span> → 
+                <a href="demo-summary.html">Summary</a>
+            </div>
+            <h1>🏢 GrahmOS Enterprise SaaS Resilience</h1>
+            <p>Watch your enterprise software stay online during AWS outages using mesh networking + agent orchestration</p>
+        </div>
+
+        <!-- Split Screen Comparison -->
+        <div class="split-container">
+            <!-- LEFT: Without GrahmOS (AWS Dependent) -->
+            <div class="split-panel failed" id="awsPanel">
+                <div class="panel-header failed">
+                    <h2>❌ Without GrahmOS</h2>
+                    <p>Cloud-Dependent Architecture</p>
+                </div>
+
+                <div class="system-status">
+                    <div class="status-header">
+                        <span style="font-weight: 600;">System Status</span>
+                        <span class="status-badge offline" id="awsStatus">AWS Outage Detected</span>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--color-text-muted);">Single point of failure: All services depend on AWS availability</p>
+                </div>
+
+                <div class="service-grid" id="awsServices">
+                    <div class="service-card failed">
+                        <div class="service-header">
+                            <span class="service-name">💳 Payment Processing</span>
+                            <span class="service-status failed">FAILED</span>
+                        </div>
+                        <div class="service-details">❌ Unable to process customer payments<br>Revenue loss: $1,250/minute</div>
+                    </div>
+
+                    <div class="service-card failed">
+                        <div class="service-header">
+                            <span class="service-name">👥 CRM System</span>
+                            <span class="service-status failed">OFFLINE</span>
+                        </div>
+                        <div class="service-details">❌ Customer data inaccessible<br>Sales team blocked</div>
+                    </div>
+
+                    <div class="service-card failed">
+                        <div class="service-header">
+                            <span class="service-name">🎫 Support Desk</span>
+                            <span class="service-status failed">DISCONNECTED</span>
+                        </div>
+                        <div class="service-details">❌ Support tickets unreachable<br>Customer inquiries piling up</div>
+                    </div>
+
+                    <div class="service-card failed">
+                        <div class="service-header">
+                            <span class="service-name">📊 Analytics Dashboard</span>
+                            <span class="service-status failed">UNAVAILABLE</span>
+                        </div>
+                        <div class="service-details">❌ Business intelligence offline<br>No visibility into operations</div>
+                    </div>
+                </div>
+
+                <div class="mesh-visualization">
+                    <div class="mesh-title">Network Topology</div>
+                    <div class="mesh-canvas" id="awsMesh">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="agent-feed" id="awsStateFeed">
+                    <div class="agent-feed-title">📉 System State</div>
+                    <div class="agent-log warning">
+                        <div><strong>⏸️ Waiting for simulation...</strong></div>
+                        <div class="log-timestamp">Ready</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: With GrahmOS (Mesh Resilient) -->
+            <div class="split-panel success" id="grahmosPanel">
+                <div class="panel-header success">
+                    <h2>✅ With GrahmOS</h2>
+                    <p>P2P Mesh Network + Agent Orchestration</p>
+                </div>
+
+                <div class="system-status">
+                    <div class="status-header">
+                        <span style="font-weight: 600;">System Status</span>
+                        <span class="status-badge online" id="grahmosStatus">Mesh Network Active</span>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--color-text-muted);">Distributed resilience: Services reroute through P2P mesh (libp2p + CRDT sync)</p>
+                </div>
+
+                <div class="service-grid" id="grahmosServices">
+                    <div class="service-card success">
+                        <div class="service-header">
+                            <span class="service-name">💳 Payment Processing</span>
+                            <span class="service-status online">ONLINE</span>
+                        </div>
+                        <div class="service-details">✓ Payments routed through mesh network<br>0 revenue loss</div>
+                    </div>
+
+                    <div class="service-card success">
+                        <div class="service-header">
+                            <span class="service-name">👥 CRM System</span>
+                            <span class="service-status online">SYNCED</span>
+                        </div>
+                        <div class="service-details">✓ CRDT sync across mesh nodes<br>Sales team operational</div>
+                    </div>
+
+                    <div class="service-card success">
+                        <div class="service-header">
+                            <span class="service-name">🎫 Support Desk</span>
+                            <span class="service-status online">ACTIVE</span>
+                        </div>
+                        <div class="service-details">✓ Support agents coordinating via mesh<br>Tickets processing normally</div>
+                    </div>
+
+                    <div class="service-card success">
+                        <div class="service-header">
+                            <span class="service-name">📊 Analytics Dashboard</span>
+                            <span class="service-status online">OPERATIONAL</span>
+                        </div>
+                        <div class="service-details">✓ Real-time data via distributed nodes<br>Full business visibility</div>
+                    </div>
+                </div>
+
+                <div class="mesh-visualization">
+                    <div class="mesh-title">P2P Mesh Network (libp2p)</div>
+                    <div class="mesh-canvas" id="grahmosMesh">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="agent-feed" id="grahmosStateFeed">
+                    <div class="agent-feed-title">🤖 Agent Response & System State</div>
+                    <div class="agent-log success">
+                        <div><strong>✓ Mesh network initialized</strong></div>
+                        <div class="log-timestamp">Ready</div>
+                    </div>
+                    <div class="agent-log success">
+                        <div><strong>✓ Agent swarm ready for coordination</strong></div>
+                        <div class="log-timestamp">Ready</div>
+                    </div>
+                    <div class="agent-log warning">
+                        <div><strong>⏸️ Awaiting offline detection...</strong></div>
+                        <div class="log-timestamp">Standby</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <button class="control-btn danger" id="triggerOutage" onclick="triggerAWSOutage()">
+                ⚠️ Simulate AWS Outage
+            </button>
+            <button class="control-btn success" id="restoreAWS" onclick="restoreAWS()" disabled>
+                ✓ Restore AWS Connection
+            </button>
+            <button class="control-btn" onclick="window.location.href='demo-summary.html'">
+                View Complete Results →
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let outageActive = false;
+        let agentLogs = [];
+
+        function addStateLog(feedId, message, type = 'success') {
+            const feed = document.getElementById(feedId);
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `agent-log ${type}`;
+            logEntry.innerHTML = `
+                <div><strong>${message}</strong></div>
+                <div class="log-timestamp">${timestamp}</div>
+            `;
+            
+            feed.appendChild(logEntry);
+            feed.scrollTop = feed.scrollHeight;
+            
+            agentLogs.push({ feedId, message, type, timestamp });
+        }
+
+        function triggerAWSOutage() {
+            if (outageActive) return;
+            
+            outageActive = true;
+            document.getElementById('triggerOutage').disabled = true;
+            document.getElementById('restoreAWS').disabled = false;
+            
+            // Clear initial state messages
+            document.getElementById('awsStateFeed').innerHTML = '<div class="agent-feed-title">📉 Incident State</div>';
+            document.getElementById('grahmosStateFeed').innerHTML = '<div class="agent-feed-title">🤖 Agent Response & System State</div>';
+            
+            // AWS side fails
+            document.getElementById('awsStatus').textContent = 'AWS OUTAGE';
+            document.getElementById('awsStatus').className = 'status-badge offline';
+            
+            // LEFT: Show incident progression
+            addStateLog('awsStateFeed', '🚨 AWS outage detected', 'error');
+            
+            // RIGHT: GrahmOS detects and responds
+            addStateLog('grahmosStateFeed', '🚨 Offline incident detected', 'warning');
+            
+            setTimeout(() => {
+                addStateLog('awsStateFeed', '❌ Payment processing failed', 'error');
+                addStateLog('grahmosStateFeed', '🔍 Scanning mesh network topology...', 'success');
+            }, 500);
+            
+            setTimeout(() => {
+                addStateLog('awsStateFeed', '❌ CRM system offline', 'error');
+                addStateLog('grahmosStateFeed', '🤖 Spawning failover coordinator agent', 'success');
+            }, 1000);
+            
+            setTimeout(() => {
+                addStateLog('awsStateFeed', '❌ Support desk disconnected', 'error');
+                addStateLog('grahmosStateFeed', '🌐 Rerouting traffic through P2P mesh (libp2p)', 'success');
+            }, 1500);
+            
+            setTimeout(() => {
+                addStateLog('awsStateFeed', '❌ Analytics unavailable', 'error');
+                addStateLog('grahmosStateFeed', '📦 Activating CRDT synchronization across nodes', 'success');
+            }, 2000);
+            
+            setTimeout(() => {
+                addStateLog('awsStateFeed', '💸 Revenue loss: $1,250/min', 'error');
+                addStateLog('grahmosStateFeed', '⚖️ Load balancing agents across mesh network', 'success');
+            }, 2500);
+            
+            setTimeout(() => {
+                addStateLog('awsStateFeed', '⏳ Systems remain offline...', 'error');
+                addStateLog('grahmosStateFeed', '✅ All services operational on mesh network', 'success');
+                document.getElementById('grahmosStatus').textContent = 'Mesh Network Active - Resilient';
+            }, 3000);
+            
+            setTimeout(() => {
+                addStateLog('grahmosStateFeed', '💰 Zero revenue loss', 'success');
+            }, 3500);
+            
+            setTimeout(() => {
+                addStateLog('grahmosStateFeed', '🎯 Systems staying online without cloud', 'success');
+            }, 4000);
+        }
+
+        function restoreAWS() {
+            if (!outageActive) return;
+            
+            outageActive = false;
+            document.getElementById('triggerOutage').disabled = false;
+            document.getElementById('restoreAWS').disabled = true;
+            
+            document.getElementById('awsStatus').textContent = 'AWS Restored';
+            document.getElementById('awsStatus').className = 'status-badge degraded';
+            
+            // LEFT: AWS recovery
+            addStateLog('awsStateFeed', '🔄 AWS connectivity restored', 'warning');
+            
+            // RIGHT: GrahmOS syncs back
+            addStateLog('grahmosStateFeed', '🔄 AWS connectivity restored', 'success');
+            
+            setTimeout(() => {
+                addStateLog('awsStateFeed', '🔗 Services coming back online...', 'warning');
+                addStateLog('grahmosStateFeed', '🔗 Syncing mesh data back to cloud', 'success');
+            }, 500);
+            
+            setTimeout(() => {
+                addStateLog('awsStateFeed', '✓ Systems operational again', 'warning');
+                addStateLog('grahmosStateFeed', '✓ Zero data loss - CRDT merge complete', 'success');
+            }, 1000);
+            
+            setTimeout(() => {
+                addStateLog('awsStateFeed', '⚠️ Still vulnerable to next outage', 'warning');
+                addStateLog('grahmosStateFeed', '🎯 Hybrid mode: Mesh + Cloud active', 'success');
+                document.getElementById('grahmosStatus').textContent = 'Hybrid Mode: Mesh + Cloud';
+            }, 1500);
+        }
+
+        // Initialize visualizations on load - states already set in HTML
+    </script>
+</body>
+</html>
