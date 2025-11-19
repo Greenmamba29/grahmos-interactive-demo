@@ -1,6 +1,6 @@
 [build]
   publish = "docs"
-  command = "echo 'Documentation ready for deployment'"
+  command = "echo 'Static HTML documentation ready for deployment'"
 
 [[redirects]]
   from = "/*"
@@ -13,7 +13,8 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options = "DENY"
+    X-Frame-Options = "SAMEORIGIN"
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "frame-ancestors 'self' https://*.netlify.app https://*.grahmos.com"

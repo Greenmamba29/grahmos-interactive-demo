@@ -1,38 +1,16 @@
-# Rust
-target/
-Cargo.lock
-**/*.rs.bk
-
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
 
+# Netlify
+.netlify/
+
 # Logs
 *.log
-
-# Environment
-.env
-.env.local
-
-# Build artifacts
-dist/
-build/
-
-# Test outputs
-coverage/
-reports/
-*.profraw
-*.profdata
-
-# Monitoring
-monitoring/data/
-monitoring/logs/
-
-# Local Netlify folder
-.netlify
